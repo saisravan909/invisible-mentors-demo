@@ -412,9 +412,204 @@ const MENTOR_FEEDBACK = [
   { original: "paradigms", suggested: "approaches", reason: "'Paradigms' creates distance. Concrete language builds trust." },
 ];
 
+const YAML_STEPS = [
+  { lines: [1,2],   label: "Trigger",         desc: "on: push to main" },
+  { lines: [3,4],   label: "Checkout",        desc: "actions/checkout@v4" },
+  { lines: [5,6],   label: "Python setup",    desc: "python-version: 3.x" },
+  { lines: [7,8],   label: "Install deps",    desc: "pip install mkdocs-material" },
+  { lines: [9,10],  label: "Install Vale",    desc: "vale v3.7.0" },
+  { lines: [11,12], label: "Vale scan",       desc: "vale --config .vale.ini docs/", state: "scanning" },
+  { lines: [13,14], label: "AI Mentor",       desc: "python ai_mentor.py --table", state: "flagged" },
+  { lines: [15,16], label: "Gemini AI call",  desc: "Sending to Gemini 2.5 Flash...", state: "analyzing" },
+  { lines: [17,18], label: "Deploy docs",     desc: "mkdocs gh-deploy --force", state: "complete" },
+];
+
+const YAML_CODE = `name: Invisible Mentors — Lint, Mentor & Deploy
+on: { push: { branches: [main] } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.x" }
+      - run: pip install mkdocs-material google-genai
+      - run: |
+          curl -sL .../vale_3.7.0_Linux_64-bit.tar.gz | tar -xz
+      - name: Vale Jargon Check
+        run: vale --config .vale.ini docs/
+      - name: AI Mentor Audit Table
+        if: steps.vale_check.outcome == 'failure'
+        env: { GEMINI_API_KEY: \${{ secrets.GEMINI_API_KEY }} }
+        run: python ai_mentor.py --table --file docs/onboarding.md
+      - name: ✨ Gemini 2.5 Flash
+        run: |  # Sends flagged text → gets structured rewrite
+          # → Posts as sticky PR comment automatically
+      - name: Deploy Docs to GitHub Pages
+        run: mkdocs gh-deploy --force`;
+
+const TERMINAL_LINES: { text: string; color: string; state: DemoState | "always" }[] = [
+  { text: "$ vale --config .vale.ini docs/", color: "text-slate-400", state: "always" },
+  { text: "Scanning 1 file...", color: "text-slate-500", state: "scanning" },
+  { text: "docs/onboarding.md:14:31  error  'utilize'   Jargon.jargon", color: "text-red-400", state: "flagged" },
+  { text: "docs/onboarding.md:14:58  error  'leverage'  Jargon.jargon", color: "text-red-400", state: "flagged" },
+  { text: "docs/onboarding.md:14:76  error  'paradigms' Jargon.jargon", color: "text-red-400", state: "flagged" },
+  { text: "✖ 3 errors · exit code 1", color: "text-red-500 font-bold", state: "flagged" },
+  { text: "$ python ai_mentor.py --table --file docs/onboarding.md", color: "text-slate-400", state: "analyzing" },
+  { text: "  → Sending 3 flagged passages to Gemini 2.5 Flash...", color: "text-purple-400", state: "analyzing" },
+  { text: "  → Model: gemini-2.5-flash  tokens_in: 312  tokens_out: 198", color: "text-slate-500", state: "complete" },
+  { text: "  → Posting sticky comment to PR #47...", color: "text-blue-400", state: "complete" },
+  { text: "$ mkdocs gh-deploy --force", color: "text-slate-400", state: "complete" },
+  { text: "  INFO  -  Documentation built in 2.1s", color: "text-green-400", state: "complete" },
+  { text: "  INFO  -  Deploying to GitHub Pages", color: "text-green-400", state: "complete" },
+  { text: "✔ Done. Docs live at saisravan909.github.io/Invisible-Mentors/", color: "text-green-300 font-bold", state: "complete" },
+];
+
+const STATE_ORDER: DemoState[] = ["idle", "scanning", "flagged", "analyzing", "complete"];
+
+function stateGte(a: DemoState | "always", b: DemoState): boolean {
+  if (a === "always") return true;
+  return STATE_ORDER.indexOf(a as DemoState) <= STATE_ORDER.indexOf(b);
+}
+
+function UnderTheHood({ state }: { state: DemoState }) {
+  const activeStep = YAML_STEPS.filter(s => s.state && stateGte(s.state as DemoState, state)).at(-1)
+    ?? (state !== "idle" ? YAML_STEPS[4] : null);
+
+  const visibleLines = TERMINAL_LINES.filter(l => stateGte(l.state, state));
+
+  return (
+    <div className="grid lg:grid-cols-2 gap-4">
+      {/* Left: Workflow YAML */}
+      <div className="rounded-xl border border-purple-500/20 bg-navy-950/60 overflow-hidden">
+        <div className="flex items-center gap-2 px-4 py-2.5 bg-purple-950/40 border-b border-purple-500/15">
+          <div className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
+          <span className="text-purple-300 text-xs font-semibold font-mono">.github/workflows/main.yml</span>
+          <a
+            href="https://github.com/saisravan909/Invisible-Mentors/blob/main/.github/workflows/main.yml"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ml-auto flex items-center gap-1 text-purple-400/70 hover:text-purple-300 text-xs transition-colors"
+          >
+            <ExternalLink className="w-3 h-3" /> View on GitHub
+          </a>
+        </div>
+        <div className="p-3 font-mono text-xs overflow-auto max-h-72">
+          {YAML_CODE.split("\n").map((line, i) => {
+            const lineNum = i + 1;
+            const isActive = activeStep?.lines.includes(lineNum);
+            return (
+              <motion.div
+                key={i}
+                animate={isActive ? { backgroundColor: "rgba(139,92,246,0.15)" } : { backgroundColor: "transparent" }}
+                transition={{ duration: 0.3 }}
+                className={`flex gap-2 px-2 py-0.5 rounded ${isActive ? "border-l-2 border-purple-400" : "border-l-2 border-transparent"}`}
+              >
+                <span className="text-slate-700 select-none w-4 shrink-0 text-right">{lineNum}</span>
+                <span className={isActive ? "text-purple-200" : "text-slate-400"}>
+                  {line}
+                </span>
+              </motion.div>
+            );
+          })}
+        </div>
+        {/* Active step badge */}
+        <AnimatePresence mode="wait">
+          {activeStep && (
+            <motion.div
+              key={activeStep.label}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="flex items-center gap-2 px-4 py-2 bg-purple-950/40 border-t border-purple-500/15"
+            >
+              <motion.div
+                animate={{ rotate: state === "scanning" || state === "analyzing" ? 360 : 0 }}
+                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                className="w-3 h-3 border border-purple-400 border-t-transparent rounded-full"
+              />
+              <span className="text-purple-300 text-xs font-mono font-semibold">{activeStep.label}</span>
+              <span className="text-slate-500 text-xs font-mono">→ {activeStep.desc}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Right: Live Terminal Log */}
+      <div className="rounded-xl border border-slate-700/50 bg-[#0d1117] overflow-hidden">
+        <div className="flex items-center gap-2 px-4 py-2.5 bg-[#161b22] border-b border-slate-700/50">
+          <div className="flex gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-full bg-red-500/60" />
+            <div className="w-2.5 h-2.5 rounded-full bg-amber-400/60" />
+            <div className="w-2.5 h-2.5 rounded-full bg-green-500/60" />
+          </div>
+          <span className="text-slate-400 text-xs font-mono ml-1">GitHub Actions Runner</span>
+          <a
+            href="https://github.com/saisravan909/Invisible-Mentors/actions"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ml-auto flex items-center gap-1 text-slate-500 hover:text-slate-300 text-xs transition-colors"
+          >
+            <ExternalLink className="w-3 h-3" /> Live Runs
+          </a>
+        </div>
+        <div className="p-4 font-mono text-xs space-y-1.5 min-h-48 max-h-72 overflow-auto">
+          <AnimatePresence>
+            {visibleLines.map((line, i) => (
+              <motion.div
+                key={line.text}
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.25, delay: i * 0.06 }}
+                className={line.color}
+              >
+                {line.text}
+              </motion.div>
+            ))}
+          </AnimatePresence>
+          {state === "idle" && (
+            <span className="text-slate-600">Waiting for pull request...</span>
+          )}
+          {(state === "scanning" || state === "analyzing") && (
+            <motion.span
+              animate={{ opacity: [1, 0] }}
+              transition={{ duration: 0.8, repeat: Infinity }}
+              className="inline-block w-2 h-3 bg-slate-400 ml-0.5"
+            />
+          )}
+        </div>
+
+        {/* GitHub PR comment preview */}
+        <AnimatePresence>
+          {state === "complete" && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              transition={{ duration: 0.4 }}
+              className="border-t border-slate-700/50"
+            >
+              <div className="flex items-center gap-2 px-4 py-2 bg-[#161b22] border-b border-slate-700/30">
+                <Github className="w-3.5 h-3.5 text-slate-400" />
+                <span className="text-slate-400 text-xs font-semibold">PR #47 — Sticky Comment Posted</span>
+                <span className="ml-auto px-2 py-0.5 rounded-full bg-green-900/60 border border-green-500/30 text-green-400 text-[10px] font-mono">0 human reviews</span>
+              </div>
+              <div className="p-3 font-mono text-xs text-slate-400 space-y-1">
+                <div className="text-blue-400 font-semibold">## 🤖 Invisible Mentor — Jargon Audit</div>
+                <div className="text-slate-500">| # | Phrase | Suggested | Reason |</div>
+                <div className="text-slate-600">|---|--------|-----------|--------|</div>
+                <div><span className="text-slate-500">| 1 | </span><span className="text-red-400">utilize</span><span className="text-slate-500"> | </span><span className="text-green-400">use</span><span className="text-slate-500"> | Adds syllables without meaning |</span></div>
+                <div><span className="text-slate-500">| 2 | </span><span className="text-red-400">leverage</span><span className="text-slate-500"> | </span><span className="text-green-400">use</span><span className="text-slate-500"> | Business jargon |</span></div>
+                <div><span className="text-slate-500">| 3 | </span><span className="text-red-400">paradigms</span><span className="text-slate-500"> | </span><span className="text-green-400">approaches</span><span className="text-slate-500"> | Too abstract |</span></div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+}
+
 function LiveDemo() {
   const [state, setState] = useState<DemoState>("idle");
   const [scanProgress, setScanProgress] = useState(0);
+  const [showHood, setShowHood] = useState(false);
   const ref = useRef(null);
 
   const runDemo = async () => {
@@ -633,7 +828,7 @@ function LiveDemo() {
             </AnimatePresence>
 
             {/* Action buttons */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-3">
               <div className="flex items-center gap-3">
                 {state === "idle" && (
                   <motion.button
@@ -669,6 +864,71 @@ function LiveDemo() {
                 </motion.div>
               )}
             </div>
+          </div>
+
+          {/* Under the Hood toggle */}
+          <div className="border-t border-blue-500/10">
+            <button
+              onClick={() => setShowHood(v => !v)}
+              className="w-full flex items-center justify-center gap-2.5 px-6 py-3.5 text-sm font-semibold transition-all duration-200 group"
+              style={{ background: showHood ? "rgba(139,92,246,0.08)" : "transparent" }}
+            >
+              <motion.div
+                animate={{ rotate: showHood ? 180 : 0 }}
+                transition={{ duration: 0.3 }}
+                className={`flex items-center justify-center w-5 h-5 rounded-full border ${showHood ? "border-purple-400 text-purple-400" : "border-slate-500 text-slate-500 group-hover:border-purple-400 group-hover:text-purple-400"} transition-colors`}
+              >
+                <ChevronDown className="w-3 h-3" />
+              </motion.div>
+              <span className={`${showHood ? "text-purple-300" : "text-slate-500 group-hover:text-purple-400"} transition-colors`}>
+                {showHood ? "Hide" : "Under the Hood"} — See the actual GitHub Actions running this
+              </span>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-500/15 border border-purple-500/25 text-purple-400">
+                LIVE CODE
+              </span>
+            </button>
+
+            <AnimatePresence>
+              {showHood && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.4, ease: "easeInOut" }}
+                  className="overflow-hidden"
+                >
+                  <div className="p-5 pt-2 bg-navy-950/30 border-t border-purple-500/10">
+                    <UnderTheHood state={state} />
+                    <div className="mt-4 flex items-center justify-center gap-3 flex-wrap">
+                      <a
+                        href="https://github.com/saisravan909/Invisible-Mentors/actions"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-slate-600 hover:border-purple-500 text-slate-400 hover:text-purple-300 text-xs font-semibold transition-all"
+                      >
+                        <Github className="w-3.5 h-3.5" /> View Live Runs on GitHub
+                      </a>
+                      <a
+                        href="https://github.com/saisravan909/Invisible-Mentors/blob/main/.github/workflows/main.yml"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-slate-600 hover:border-purple-500 text-slate-400 hover:text-purple-300 text-xs font-semibold transition-all"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" /> Full Workflow YAML
+                      </a>
+                      <a
+                        href="https://github.com/saisravan909/Invisible-Mentors/blob/main/ai_mentor.py"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-slate-600 hover:border-purple-500 text-slate-400 hover:text-purple-300 text-xs font-semibold transition-all"
+                      >
+                        <Code2 className="w-3.5 h-3.5" /> ai_mentor.py Source
+                      </a>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </div>
