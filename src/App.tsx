@@ -24,11 +24,8 @@ function Nav() {
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? "bg-navy-950/90 backdrop-blur-xl border-b border-blue-500/10 shadow-xl shadow-black/20" : ""}`}
     >
       <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-sky-400 flex items-center justify-center glow-blue">
-            <Bot className="w-4 h-4 text-white" />
-          </div>
-          <span className="font-bold text-slate-100 text-lg tracking-tight">Invisible Mentors</span>
+        <div className="flex items-center">
+          <img src="/logo.png" alt="Invisible Mentors" className="h-9 w-auto" />
         </div>
         <div className="hidden md:flex items-center gap-8">
           {["How It Works", "Live Demo", "Impact", "Conference"].map((item) => (
@@ -863,11 +860,8 @@ function Footer() {
   return (
     <footer className="py-10 border-t border-blue-500/10">
       <div className="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-sky-400 flex items-center justify-center">
-            <Bot className="w-3.5 h-3.5 text-white" />
-          </div>
-          <span className="text-slate-400 text-sm">Invisible Mentors</span>
+        <div className="flex items-center">
+          <img src="/logo.png" alt="Invisible Mentors" className="h-7 w-auto opacity-70" />
         </div>
         <p className="text-slate-600 text-sm">
           MIT Licensed · Built for the global open source community
