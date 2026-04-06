@@ -70,10 +70,29 @@ function Hero() {
       <div className="absolute bottom-1/4 right-1/6 w-96 h-96 bg-sky-600/6 rounded-full blur-3xl pointer-events-none" />
 
       <div className="relative z-10 max-w-5xl mx-auto px-6 text-center">
+
+        {/* Hero Logo */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.85 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.9, ease: "easeOut" }}
+          className="flex justify-center mb-10"
+        >
+          <div className="relative">
+            <div className="absolute inset-0 rounded-2xl bg-blue-500/20 blur-3xl scale-110 pointer-events-none" />
+            <img
+              src="/logo.png"
+              alt="Invisible Mentors"
+              className="relative w-72 sm:w-96 lg:w-[440px] h-auto rounded-2xl float-animation"
+              style={{ filter: "drop-shadow(0 0 40px rgba(59,130,246,0.35))" }}
+            />
+          </div>
+        </motion.div>
+
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
           className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-400/10 border border-amber-400/30 text-amber-400 text-sm font-medium mb-8"
         >
           <Sparkles className="w-3.5 h-3.5" />
