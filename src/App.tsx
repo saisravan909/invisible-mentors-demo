@@ -937,6 +937,22 @@ function LiveDemo() {
   );
 }
 
+const INDUSTRY_PRESETS = [
+  { id: "oss",        label: "🌐 Open Source",   contributors: 15,  prs: 30,  rate: 85,  mins: 45, note: "High contributor churn. Fast feedback retains contributors before they give up." },
+  { id: "fintech",    label: "💳 Fintech",        contributors: 20,  prs: 50,  rate: 145, mins: 60, note: "Regulatory compliance demands precision. Every word in docs can be a legal liability." },
+  { id: "healthcare", label: "🏥 Healthcare IT",  contributors: 12,  prs: 25,  rate: 120, mins: 55, note: "HIPAA & FDA docs require airtight language. Jargon in docs creates compliance risk." },
+  { id: "gov",        label: "🏛️ Government",     contributors: 10,  prs: 15,  rate: 90,  mins: 50, note: "FedRAMP and public sector mandates require clear, audit-ready documentation." },
+  { id: "startup",    label: "🚀 SaaS Startup",   contributors: 25,  prs: 60,  rate: 110, mins: 35, note: "Moving fast. Every hour saved on review is an hour toward shipping product." },
+  { id: "enterprise", label: "🏢 Enterprise",     contributors: 50,  prs: 120, rate: 125, mins: 60, note: "Large orgs spend $M/year on doc review cycles. Scale makes the ROI enormous." },
+];
+
+const ALTERNATIVES = [
+  { name: "Manual Review", emoji: "👤", setup: "$0", monthly: "Your dev time", speed: "22 hrs avg", scales: false, audit: false, oss: null, highlight: false },
+  { name: "Tech Writer Hire", emoji: "✍️", setup: "$30K+", monthly: "$8,500/mo", speed: "2–3 days", scales: false, audit: "Partial", oss: null, highlight: false },
+  { name: "Commercial Bot", emoji: "🤖", setup: "$0", monthly: "$49–$299/mo", speed: "~5 min", scales: true, audit: true, oss: false, highlight: false },
+  { name: "Invisible Mentors", emoji: "✨", setup: "$0", monthly: "$0 forever", speed: "< 30 sec", scales: true, audit: true, oss: true, highlight: true },
+];
+
 const INDUSTRY_REFS = [
   {
     org: "McKinsey & Co.",
@@ -1043,14 +1059,27 @@ function Impact() {
   const [prsPerMonth, setPrsPerMonth] = useState(30);
   const [hourlyRate, setHourlyRate] = useState(95);
   const [reviewMins, setReviewMins] = useState(45);
+  const [selectedIndustry, setSelectedIndustry] = useState("oss");
+  const [showFormula, setShowFormula] = useState(false);
+
+  const applyPreset = (p: typeof INDUSTRY_PRESETS[0]) => {
+    setSelectedIndustry(p.id);
+    setContributors(p.contributors);
+    setPrsPerMonth(p.prs);
+    setHourlyRate(p.rate);
+    setReviewMins(p.mins);
+  };
 
   // Calculations (source: McKinsey 65% reduction, IBM $23.5K/dev benchmark)
-  const timeSavedPerPR = reviewMins * 0.65; // 65% reduction per McKinsey
-  const monthlyHoursSaved = (prsPerMonth * timeSavedPerPR) / 60;
-  const annualSavings = monthlyHoursSaved * 12 * hourlyRate;
+  const totalMonthlyMins = prsPerMonth * reviewMins;          // Step 1
+  const totalMonthlyHrs = totalMonthlyMins / 60;              // Step 1b
+  const timeSavedPerPR = reviewMins * 0.65;                   // Step 2
+  const monthlyHoursSaved = (prsPerMonth * timeSavedPerPR) / 60; // Step 3
+  const annualHoursSaved = monthlyHoursSaved * 12;            // Step 4
+  const annualSavings = annualHoursSaved * hourlyRate;        // Step 5
   const threeYearValue = annualSavings * 3;
-  const infraCost = 0;
   const savingsPerPR = (timeSavedPerPR / 60) * hourlyRate;
+  const activePreset = INDUSTRY_PRESETS.find(p => p.id === selectedIndustry);
 
   return (
     <section ref={ref} className="py-28 relative" id="impact">
@@ -1120,35 +1149,125 @@ function Impact() {
           </div>
 
           <div className="grid lg:grid-cols-2 gap-0">
-            {/* Left: Sliders */}
-            <div className="p-6 border-r border-green-500/10 space-y-7">
-              <SliderInput
-                label="👥 Contributors submitting PRs"
-                value={contributors} min={1} max={100} step={1} color="blue"
-                format={v => `${v} devs`}
-                onChange={setContributors}
-              />
-              <SliderInput
-                label="📋 Pull requests per month"
-                value={prsPerMonth} min={5} max={200} step={5} color="teal"
-                format={v => `${v} PRs`}
-                onChange={setPrsPerMonth}
-              />
-              <SliderInput
-                label="💰 Senior dev hourly rate (fully loaded)"
-                value={hourlyRate} min={40} max={250} step={5} color="amber"
-                format={v => `$${v}/hr`}
-                onChange={setHourlyRate}
-              />
-              <SliderInput
-                label="⏱️ Avg. minutes per PR for manual review"
-                value={reviewMins} min={10} max={120} step={5} color="green"
-                format={v => `${v} min`}
-                onChange={setReviewMins}
-              />
-              <p className="text-slate-600 text-[11px] leading-relaxed pt-2 border-t border-slate-800">
-                * 65% time reduction per McKinsey 2023. Fully-loaded rate includes salary, benefits & overhead.
-                GitHub Actions free tier used — $0 infrastructure cost.
+            {/* Left: Industry Presets + Sliders */}
+            <div className="p-6 border-r border-green-500/10 space-y-5">
+
+              {/* Industry selector */}
+              <div>
+                <p className="text-slate-400 text-xs font-semibold uppercase tracking-widest mb-3">Select your industry</p>
+                <div className="flex flex-wrap gap-2">
+                  {INDUSTRY_PRESETS.map(p => (
+                    <button
+                      key={p.id}
+                      onClick={() => applyPreset(p)}
+                      className={`text-xs px-3 py-1.5 rounded-lg border font-medium transition-all duration-200 ${
+                        selectedIndustry === p.id
+                          ? "bg-green-500/20 border-green-500/50 text-green-300"
+                          : "bg-slate-800/40 border-slate-700/50 text-slate-400 hover:border-green-500/30 hover:text-slate-300"
+                      }`}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+                <AnimatePresence mode="wait">
+                  {activePreset && (
+                    <motion.p
+                      key={activePreset.id}
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      className="text-slate-500 text-xs mt-2 italic"
+                    >
+                      💡 {activePreset.note}
+                    </motion.p>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              <div className="space-y-6 pt-1">
+                <SliderInput
+                  label="👥 Contributors submitting PRs"
+                  value={contributors} min={1} max={100} step={1} color="blue"
+                  format={v => `${v} devs`}
+                  onChange={setContributors}
+                />
+                <SliderInput
+                  label="📋 Pull requests per month"
+                  value={prsPerMonth} min={5} max={200} step={5} color="teal"
+                  format={v => `${v} PRs`}
+                  onChange={setPrsPerMonth}
+                />
+                <SliderInput
+                  label="💰 Senior dev hourly rate (fully loaded)"
+                  value={hourlyRate} min={40} max={250} step={5} color="amber"
+                  format={v => `$${v}/hr`}
+                  onChange={setHourlyRate}
+                />
+                <SliderInput
+                  label="⏱️ Avg. minutes per PR for manual review"
+                  value={reviewMins} min={10} max={120} step={5} color="green"
+                  format={v => `${v} min`}
+                  onChange={setReviewMins}
+                />
+              </div>
+
+              {/* Formula toggle */}
+              <div className="border-t border-slate-800 pt-4">
+                <button
+                  onClick={() => setShowFormula(v => !v)}
+                  className="flex items-center gap-2 text-xs text-slate-500 hover:text-green-400 transition-colors group w-full"
+                >
+                  <motion.span animate={{ rotate: showFormula ? 90 : 0 }} transition={{ duration: 0.2 }} className="inline-block">▶</motion.span>
+                  <span className="font-semibold group-hover:text-green-400">How we calculate this</span>
+                  <span className="ml-auto text-slate-600">— full formula breakdown</span>
+                </button>
+
+                <AnimatePresence>
+                  {showFormula && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="mt-3 rounded-xl bg-slate-900/60 border border-slate-700/40 p-4 font-mono text-[11px] space-y-3">
+                        <div>
+                          <p className="text-slate-500 mb-1">① Total manual review time/month</p>
+                          <p className="text-slate-300">{prsPerMonth} PRs × {reviewMins} min = <span className="text-amber-400 font-bold">{totalMonthlyMins.toLocaleString()} min ({totalMonthlyHrs.toFixed(1)} hrs)</span></p>
+                        </div>
+                        <div>
+                          <p className="text-slate-500 mb-1">② Time saved per PR <span className="text-slate-600 font-sans font-normal not-italic">(McKinsey 2023: 65% reduction)</span></p>
+                          <p className="text-slate-300">{reviewMins} min × 0.65 = <span className="text-teal-400 font-bold">{timeSavedPerPR.toFixed(1)} min saved/PR</span></p>
+                        </div>
+                        <div>
+                          <p className="text-slate-500 mb-1">③ Monthly hours recovered</p>
+                          <p className="text-slate-300">{prsPerMonth} PRs × {timeSavedPerPR.toFixed(1)} min ÷ 60 = <span className="text-blue-400 font-bold">{monthlyHoursSaved.toFixed(1)} hrs/month</span></p>
+                        </div>
+                        <div>
+                          <p className="text-slate-500 mb-1">④ Annual hours saved</p>
+                          <p className="text-slate-300">{monthlyHoursSaved.toFixed(1)} hrs × 12 months = <span className="text-purple-400 font-bold">{annualHoursSaved.toFixed(0)} hrs/year</span></p>
+                        </div>
+                        <div>
+                          <p className="text-slate-500 mb-1">⑤ Annual value (at ${hourlyRate}/hr fully loaded)</p>
+                          <p className="text-slate-300">{annualHoursSaved.toFixed(0)} hrs × ${hourlyRate} = <span className="text-green-400 font-bold">${Math.round(annualSavings).toLocaleString()}/year</span></p>
+                        </div>
+                        <div className="border-t border-slate-700 pt-2">
+                          <p className="text-slate-500 mb-1">⑥ Infrastructure cost</p>
+                          <p className="text-slate-300">GitHub Actions free tier = <span className="text-green-400 font-bold">$0</span></p>
+                          <p className="text-slate-500 mt-1 mb-1">⑦ ROI</p>
+                          <p className="text-slate-300">${Math.round(annualSavings).toLocaleString()} ÷ $0 = <span className="text-amber-400 font-bold">∞ (infinite)</span></p>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              <p className="text-slate-600 text-[10px] leading-relaxed">
+                Sources: McKinsey Global Institute (2023), IBM IBV (2022), GitHub Octoverse (2023).
+                Fully-loaded rate = salary + benefits + overhead. $0 infra on GitHub Actions free tier.
               </p>
             </div>
 
@@ -1202,6 +1321,57 @@ function Impact() {
                 </p>
               </div>
             </div>
+          </div>
+        </motion.div>
+
+        {/* Alternatives Comparison Table */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          transition={{ delay: 0.55 }}
+          className="mt-8 rounded-2xl border border-slate-700/40 overflow-hidden"
+        >
+          <div className="flex items-center gap-3 px-6 py-4 bg-slate-800/40 border-b border-slate-700/40">
+            <BarChart3 className="w-4 h-4 text-slate-400" />
+            <span className="text-slate-200 font-bold text-sm">How Does It Compare?</span>
+            <span className="text-slate-500 text-xs ml-1">— Invisible Mentors vs. every alternative</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-700/40">
+                  <th className="text-left px-6 py-3 text-slate-500 text-xs font-semibold uppercase tracking-wider">Solution</th>
+                  <th className="text-center px-4 py-3 text-slate-500 text-xs font-semibold uppercase tracking-wider">Setup Cost</th>
+                  <th className="text-center px-4 py-3 text-slate-500 text-xs font-semibold uppercase tracking-wider">Monthly Cost</th>
+                  <th className="text-center px-4 py-3 text-slate-500 text-xs font-semibold uppercase tracking-wider">Feedback Speed</th>
+                  <th className="text-center px-4 py-3 text-slate-500 text-xs font-semibold uppercase tracking-wider">Scales</th>
+                  <th className="text-center px-4 py-3 text-slate-500 text-xs font-semibold uppercase tracking-wider">Audit Trail</th>
+                  <th className="text-center px-4 py-3 text-slate-500 text-xs font-semibold uppercase tracking-wider">Open Source</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ALTERNATIVES.map((a, i) => (
+                  <tr
+                    key={a.name}
+                    className={`border-b border-slate-800/60 transition-colors ${a.highlight ? "bg-green-950/25" : i % 2 === 0 ? "bg-slate-900/20" : ""}`}
+                  >
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">{a.emoji}</span>
+                        <span className={`font-semibold ${a.highlight ? "text-green-300" : "text-slate-300"}`}>{a.name}</span>
+                        {a.highlight && <span className="ml-1 text-[10px] px-2 py-0.5 rounded-full bg-green-500/20 border border-green-500/30 text-green-400 font-mono">this tool</span>}
+                      </div>
+                    </td>
+                    <td className={`px-4 py-4 text-center font-mono text-xs ${a.highlight ? "text-green-400 font-bold" : "text-slate-400"}`}>{a.setup}</td>
+                    <td className={`px-4 py-4 text-center font-mono text-xs ${a.highlight ? "text-green-400 font-bold" : "text-slate-400"}`}>{a.monthly}</td>
+                    <td className={`px-4 py-4 text-center font-mono text-xs ${a.highlight ? "text-green-400 font-bold" : "text-slate-400"}`}>{a.speed}</td>
+                    <td className="px-4 py-4 text-center text-base">{a.scales === true ? "✅" : a.scales === false ? "❌" : "—"}</td>
+                    <td className="px-4 py-4 text-center text-base">{a.audit === true ? "✅" : a.audit === false ? "❌" : typeof a.audit === "string" ? <span className="text-amber-400 text-xs">{a.audit}</span> : "—"}</td>
+                    <td className="px-4 py-4 text-center text-base">{a.oss === true ? "✅" : a.oss === false ? "❌" : <span className="text-slate-600 text-xs">N/A</span>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </motion.div>
 
