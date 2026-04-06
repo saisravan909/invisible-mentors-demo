@@ -173,3 +173,47 @@ body {
   cursor: pointer;
   border: 2px solid rgba(255,255,255,0.8);
 }
+
+/* Pipeline flow animations */
+@keyframes flowRight {
+  0%   { transform: translateX(-100%); opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translateX(200%); opacity: 0; }
+}
+@keyframes flowDown {
+  0%   { transform: translateY(-100%); opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translateY(200%); opacity: 0; }
+}
+@keyframes nodePulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--node-color); }
+  50%       { box-shadow: 0 0 0 12px transparent; }
+}
+@keyframes scan {
+  0%   { transform: translateY(0); opacity: 0.8; }
+  100% { transform: translateY(100%); opacity: 0; }
+}
+
+.flow-particle-h {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 30%;
+  height: 2px;
+  transform: translateY(-50%);
+  animation: flowRight 1.8s ease-in-out infinite;
+}
+.flow-particle-v {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 2px;
+  height: 30%;
+  transform: translateX(-50%);
+  animation: flowDown 1.8s ease-in-out infinite;
+}
+.node-active {
+  animation: nodePulse 1.5s ease-out infinite;
+}

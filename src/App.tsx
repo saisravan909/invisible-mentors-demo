@@ -286,111 +286,388 @@ function Problem() {
   );
 }
 
+const PIPELINE_SEQUENCE = [
+  { stateId: "pr",      nodeId: "pr",      timing: "0:00", label: "PR Opened",        color: "#3b82f6", actionStep: 0 },
+  { stateId: "vale",    nodeId: "vale",    timing: "0:02", label: "Vale Scanning",    color: "#0ea5e9", actionStep: 4 },
+  { stateId: "flagged", nodeId: "vale",    timing: "0:05", label: "Jargon Detected",  color: "#ef4444", actionStep: 4 },
+  { stateId: "gemini",  nodeId: "gemini",  timing: "0:08", label: "Gemini Analyzing", color: "#a855f7", actionStep: 5 },
+  { stateId: "comment", nodeId: "comment", timing: "0:12", label: "Comment Posted",   color: "#14b8a6", actionStep: 5 },
+  { stateId: "fix",     nodeId: "fix",     timing: "0:25", label: "Contributor Fix",  color: "#f59e0b", actionStep: 0 },
+  { stateId: "rescan",  nodeId: "vale",    timing: "0:28", label: "Re-scanning…",     color: "#22c55e", actionStep: 4 },
+  { stateId: "deploy",  nodeId: "deploy",  timing: "0:45", label: "Deployed! 🚀",     color: "#22c55e", actionStep: 6 },
+];
+
+const ACTION_STEPS = [
+  { name: "Trigger", cmd: "on: pull_request / push", done: true,    dur: "0.1s" },
+  { name: "Checkout code", cmd: "actions/checkout@v4", done: true, dur: "0.8s" },
+  { name: "Set up Python", cmd: "python-version: 3.x", done: true, dur: "1.2s" },
+  { name: "Install deps", cmd: "pip install mkdocs-material google-genai", done: true, dur: "3.4s" },
+  { name: "Vale Jargon Check", cmd: "vale --config .vale.ini docs/", running: true, dur: "…" },
+  { name: "AI Mentor Audit", cmd: "python ai_mentor.py --table", queued: true, dur: "" },
+  { name: "Deploy to Pages", cmd: "mkdocs gh-deploy --force", queued: true, dur: "" },
+];
+
+const NODE_DETAILS: Record<string, { title: string; body: string; terminal: string[] }> = {
+  pr:      { title: "Contributor Opens a PR",       body: "A new contributor pushes documentation changes and opens a pull request. GitHub instantly fires a webhook — no configuration, no waiting.", terminal: ["$ git push origin fix/onboarding-guide", "Counting objects: 4, done.", "remote: Resolving deltas: 100%", "remote: GitHub Actions triggered ✓"] },
+  vale:    { title: "Vale Scans Every Line",         body: "Vale reads every `.md` file in `docs/` against the custom jargon ruleset. It exits 0 (clean) or 1 (issues found) — this exit code drives the entire branch logic.", terminal: ["$ vale --config .vale.ini docs/", "Scanning 1 file...", "docs/onboarding.md:14  error  'utilize'  Jargon.jargon", "docs/onboarding.md:14  error  'leverage' Jargon.jargon", "✖ 2 errors in 1 file (exit 1)"] },
+  gemini:  { title: "Gemini 2.5 Flash Analyzes",    body: "The flagged passages and surrounding context are sent to Gemini 2.5 Flash. The model generates a structured rewrite — not just a flag, but a human-quality replacement.", terminal: ["$ python ai_mentor.py --table --file docs/onboarding.md", "  → Connecting to Gemini 2.5 Flash API...", "  → Sending 2 flagged passages (312 tokens)", "  → Received rewrite (198 tokens, 0.8s)", "  → Formatting as Markdown table..."] },
+  comment: { title: "Feedback Posted to the PR",     body: "The structured rewrite is posted as a sticky comment on the pull request. The contributor sees it instantly — no email, no separate tool, no waiting for a human.", terminal: ["$ # Posting via marocchino/sticky-pull-request-comment", "  → Authenticating with GITHUB_TOKEN", "  → Posting to PR #47...", "  ✓ Comment posted (id: 2847391)", "  Posted automatically · 0 human reviews"] },
+  fix:     { title: "Contributor Revises & Pushes", body: "The contributor reads the structured feedback, updates the flagged phrases, and pushes again. The pipeline re-triggers automatically — no manual kick needed.", terminal: ["$ git add docs/onboarding.md", "$ git commit -m 'fix: replace jargon per Invisible Mentor'", "$ git push origin fix/onboarding-guide", "  → Pipeline re-triggered automatically ↺"] },
+  deploy:  { title: "Docs Deploy Automatically",    body: "With the writing clean, Vale exits 0. MkDocs builds the documentation and deploys it to GitHub Pages. The maintainer was never paged. The contributor gets expert feedback. Everyone wins.", terminal: ["$ mkdocs gh-deploy --force", "  INFO  -  Documentation built in 2.1s", "  INFO  -  Deploying to GitHub Pages...", "  INFO  -  Your documentation should shortly be available at:", "  ✔  https://saisravan909.github.io/Invisible-Mentors/"] },
+};
+
+function PipelineNode({ id, label, icon: Icon, color, number, active, done, onClick }: {
+  id: string; label: string; icon: React.ElementType; color: string; number: string;
+  active: boolean; done: boolean; onClick: () => void;
+}) {
+  return (
+    <button onClick={onClick} className="flex flex-col items-center gap-2 cursor-pointer group focus:outline-none">
+      <div className="relative">
+        {active && (
+          <motion.div
+            className="absolute inset-0 rounded-full"
+            style={{ background: color }}
+            animate={{ scale: [1, 1.6, 1], opacity: [0.3, 0, 0.3] }}
+            transition={{ duration: 1.5, repeat: Infinity }}
+          />
+        )}
+        <motion.div
+          animate={{
+            boxShadow: active ? `0 0 24px ${color}80, 0 0 8px ${color}40` : done ? `0 0 8px ${color}40` : "none",
+            borderColor: active ? color : done ? `${color}60` : "rgba(255,255,255,0.1)",
+            background: active ? `${color}25` : done ? `${color}15` : "rgba(15,23,42,0.6)",
+          }}
+          transition={{ duration: 0.4 }}
+          className="w-14 h-14 rounded-full border-2 flex items-center justify-center relative z-10 transition-transform duration-200 group-hover:scale-110"
+        >
+          {done && !active
+            ? <Check className="w-5 h-5" style={{ color }} />
+            : <Icon className="w-5 h-5" style={{ color: active ? color : done ? color : "#64748b" }} />
+          }
+          {active && (
+            <motion.div
+              className="absolute inset-0 rounded-full"
+              style={{ border: `2px solid ${color}` }}
+              animate={{ scale: [1, 1.4], opacity: [0.6, 0] }}
+              transition={{ duration: 1, repeat: Infinity }}
+            />
+          )}
+        </motion.div>
+        <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black z-20"
+          style={{ background: active ? color : done ? `${color}80` : "#1e293b", color: active || done ? "#fff" : "#64748b", border: `1px solid ${active ? color : "rgba(255,255,255,0.1)"}` }}>
+          {number}
+        </div>
+      </div>
+      <span className="text-[11px] font-semibold text-center max-w-16 leading-tight"
+        style={{ color: active ? color : done ? "#94a3b8" : "#475569" }}>
+        {label}
+      </span>
+    </button>
+  );
+}
+
+function FlowConnector({ active, color, vertical = false }: { active: boolean; color: string; vertical?: boolean }) {
+  return (
+    <div className={`relative flex-shrink-0 ${vertical ? "w-0.5 h-8" : "h-0.5 flex-1 min-w-8"}`}
+      style={{ background: active ? `linear-gradient(${vertical?"to bottom":"to right"}, ${color}40, ${color}80)` : "rgba(255,255,255,0.06)" }}>
+      {active && (
+        <motion.div
+          className={`absolute ${vertical ? "w-full" : "h-full"} rounded-full`}
+          style={{
+            background: `linear-gradient(${vertical ? "to bottom" : "to right"}, transparent, ${color}, transparent)`,
+            [vertical ? "height" : "width"]: "40%",
+          }}
+          animate={vertical ? { top: ["-40%", "120%"] } : { left: ["-40%", "120%"] }}
+          transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}
+        />
+      )}
+    </div>
+  );
+}
+
 function HowItWorks() {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-80px" });
+  const [seqIndex, setSeqIndex] = useState(0);
+  const [showActions, setShowActions] = useState(false);
+  const [manualNode, setManualNode] = useState<string | null>(null);
 
-  const steps = [
-    {
-      number: "01",
-      icon: GitPullRequest,
-      title: "Contributor Opens a PR",
-      description: "A new contributor submits documentation changes. The pipeline triggers automatically — no configuration needed.",
-      color: "text-blue-400",
-      glow: "shadow-blue-500/20",
-      border: "border-blue-500/20",
-    },
-    {
-      number: "02",
-      icon: FileText,
-      title: "Vale Scans the Writing",
-      description: "Vale checks every line against the project's style guide — flagging jargon, passive voice, and corporate speak.",
-      color: "text-sky-400",
-      glow: "shadow-sky-500/20",
-      border: "border-sky-500/20",
-    },
-    {
-      number: "03",
-      icon: Bot,
-      title: "Gemini AI Reads the Flags",
-      description: "When Vale finds issues, Gemini 2.5 Flash reads the full context and generates a human-quality rewrite.",
-      color: "text-teal-400",
-      glow: "shadow-teal-500/20",
-      border: "border-teal-500/20",
-    },
-    {
-      number: "04",
-      icon: GitPullRequest,
-      title: "Feedback Posted to the PR",
-      description: "The mentor's suggestion appears directly in the pull request as a structured comment — with the original, the problem, and the fix.",
-      color: "text-purple-400",
-      glow: "shadow-purple-500/20",
-      border: "border-purple-500/20",
-    },
-    {
-      number: "05",
-      icon: Code2,
-      title: "Contributor Fixes and Pushes",
-      description: "The contributor applies the feedback and pushes again. The pipeline re-runs automatically — no manual trigger.",
-      color: "text-amber-400",
-      glow: "shadow-amber-500/20",
-      border: "border-amber-500/20",
-    },
-    {
-      number: "06",
-      icon: Rocket,
-      title: "Docs Deploy Automatically",
-      description: "Once the writing is clean, the documentation site builds and deploys to GitHub Pages. The maintainer was never paged.",
-      color: "text-green-400",
-      glow: "shadow-green-500/20",
-      border: "border-green-500/20",
-    },
+  useEffect(() => {
+    if (!inView) return;
+    const t = setInterval(() => {
+      setSeqIndex(i => (i + 1) % PIPELINE_SEQUENCE.length);
+      setManualNode(null);
+    }, 2200);
+    return () => clearInterval(t);
+  }, [inView]);
+
+  const seq = PIPELINE_SEQUENCE[seqIndex];
+  const activeNode = manualNode ?? seq.nodeId;
+  const activeSeq = manualNode ? PIPELINE_SEQUENCE.find(s => s.nodeId === manualNode) ?? seq : seq;
+  const doneNodes = new Set(PIPELINE_SEQUENCE.slice(0, seqIndex + 1).map(s => s.nodeId));
+  const detail = NODE_DETAILS[activeNode] ?? NODE_DETAILS.pr;
+  const actionStepIdx = activeSeq.actionStep;
+
+  const nodes = [
+    { id: "pr",      label: "PR Opens",     icon: GitPullRequest, color: "#3b82f6", number: "01" },
+    { id: "vale",    label: "Vale Scan",    icon: FileText,        color: "#0ea5e9", number: "02" },
+    { id: "gemini",  label: "Gemini AI",   icon: Bot,             color: "#a855f7", number: "03" },
+    { id: "comment", label: "PR Comment",  icon: AlertCircle,     color: "#14b8a6", number: "04" },
+    { id: "fix",     label: "Fix & Push",  icon: Code2,           color: "#f59e0b", number: "05" },
+    { id: "deploy",  label: "Deploy",      icon: Rocket,          color: "#22c55e", number: "06" },
   ];
 
   return (
-    <section ref={ref} className="py-28 relative bg-gradient-to-b from-transparent to-navy-900/30">
-      <div className="absolute inset-0 grid-bg opacity-40 pointer-events-none" />
+    <section ref={ref} className="py-28 relative bg-gradient-to-b from-transparent to-navy-900/30" id="how-it-works">
+      <div className="absolute inset-0 grid-bg opacity-30 pointer-events-none" />
       <div className="max-w-6xl mx-auto px-6 relative">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={inView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-16"
-        >
+
+        {/* Header */}
+        <motion.div initial={{ opacity: 0, y: 30 }} animate={inView ? { opacity: 1, y: 0 } : {}} className="text-center mb-14">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-sm font-medium mb-6">
             <Zap className="w-3.5 h-3.5" />
-            The Process
+            Pipeline Theater
           </div>
           <h2 className="text-4xl sm:text-5xl font-black text-slate-100 mb-4">
-            Six Steps.{" "}
-            <span className="gradient-text">Zero Manual Reviews.</span>
+            Zero Manual Reviews.{" "}
+            <span className="gradient-text">Every Single PR.</span>
           </h2>
           <p className="text-lg text-slate-400 max-w-2xl mx-auto">
-            The entire pipeline runs in under 60 seconds. The maintainer only looks at the PR
-            after the writing is already clean.
+            Watch the live pipeline. Click any node to inspect what's happening at that step.
           </p>
         </motion.div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {steps.map((step, i) => (
+        {/* Pipeline card */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }} animate={inView ? { opacity: 1, y: 0 } : {}}
+          transition={{ delay: 0.2 }}
+          className="rounded-2xl border border-blue-500/15 overflow-hidden shadow-2xl"
+          style={{ background: "linear-gradient(160deg, rgba(10,14,26,0.95) 0%, rgba(5,10,20,0.98) 100%)" }}
+        >
+          {/* Status bar */}
+          <div className="flex items-center gap-3 px-5 py-3 border-b border-white/5">
+            <div className="flex gap-1.5">
+              <div className="w-3 h-3 rounded-full bg-red-500/60" />
+              <div className="w-3 h-3 rounded-full bg-amber-400/60" />
+              <div className="w-3 h-3 rounded-full bg-green-500/60" />
+            </div>
+            <span className="text-slate-600 text-xs font-mono flex-1">Invisible Mentors — Pipeline Live View</span>
             <motion.div
-              key={step.number}
-              initial={{ opacity: 0, y: 30 }}
-              animate={inView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.5, delay: i * 0.1 }}
-              className={`card-glass card-glass-hover rounded-2xl p-7 border ${step.border} shadow-lg ${step.glow}`}
+              key={seqIndex}
+              initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }}
+              className="flex items-center gap-2 text-xs font-mono px-3 py-1 rounded-full border"
+              style={{ borderColor: `${seq.color}40`, background: `${seq.color}10`, color: seq.color }}
             >
-              <div className="flex items-start justify-between mb-5">
-                <div className={`w-11 h-11 rounded-xl bg-navy-800 border ${step.border} flex items-center justify-center`}>
-                  <step.icon className={`w-5 h-5 ${step.color}`} />
-                </div>
-                <span className={`text-5xl font-black opacity-10 ${step.color}`}>{step.number}</span>
-              </div>
-              <h3 className="text-slate-100 font-bold text-lg mb-2">{step.title}</h3>
-              <p className="text-slate-400 text-sm leading-relaxed">{step.description}</p>
+              <motion.div className="w-1.5 h-1.5 rounded-full" style={{ background: seq.color }}
+                animate={{ scale: [1, 1.4, 1] }} transition={{ duration: 0.8, repeat: Infinity }} />
+              {seq.label}
+              <span className="text-slate-600 ml-1">· {seq.timing}</span>
             </motion.div>
-          ))}
-        </div>
+          </div>
+
+          <div className="grid lg:grid-cols-[1fr,380px]">
+            {/* Left: Pipeline diagram */}
+            <div className="p-6 border-r border-white/5">
+              {/* Row 1: Main path + branch */}
+              <div className="mb-4">
+                <div className="text-[10px] font-mono text-slate-600 mb-3 uppercase tracking-widest">Pipeline Flow</div>
+
+                {/* Top row: PR → Vale → Deploy (clean path) */}
+                <div className="flex items-center gap-1 mb-2">
+                  <PipelineNode {...nodes[0]} active={activeNode === "pr"} done={doneNodes.has("pr")} onClick={() => setManualNode("pr")} />
+                  <FlowConnector active={doneNodes.has("pr") && doneNodes.has("vale")} color="#0ea5e9" />
+                  <PipelineNode {...nodes[1]} active={activeNode === "vale"} done={doneNodes.has("vale")} onClick={() => setManualNode("vale")} />
+                  <FlowConnector active={seq.stateId === "rescan" || seq.stateId === "deploy"} color="#22c55e" />
+                  <div className="flex flex-col items-center">
+                    <div className="text-[9px] text-green-500/70 font-mono mb-1">✅ clean</div>
+                    <PipelineNode {...nodes[5]} active={activeNode === "deploy"} done={doneNodes.has("deploy")} onClick={() => setManualNode("deploy")} />
+                  </div>
+                </div>
+
+                {/* Branch indicator */}
+                <div className="flex items-start ml-[108px] gap-1">
+                  <div className="flex flex-col items-center mt-0">
+                    <div className="w-0.5 h-5 bg-red-500/40" />
+                    <div className="text-[9px] text-red-400/70 font-mono">⚠️ jargon</div>
+                  </div>
+                </div>
+
+                {/* Bottom row: Gemini → Comment → Fix (jargon path) */}
+                <div className="flex items-center gap-1 ml-[100px]">
+                  <PipelineNode {...nodes[2]} active={activeNode === "gemini"} done={doneNodes.has("gemini")} onClick={() => setManualNode("gemini")} />
+                  <FlowConnector active={doneNodes.has("gemini") && doneNodes.has("comment")} color="#14b8a6" />
+                  <PipelineNode {...nodes[3]} active={activeNode === "comment"} done={doneNodes.has("comment")} onClick={() => setManualNode("comment")} />
+                  <FlowConnector active={doneNodes.has("comment") && doneNodes.has("fix")} color="#f59e0b" />
+                  <PipelineNode {...nodes[4]} active={activeNode === "fix"} done={doneNodes.has("fix")} onClick={() => setManualNode("fix")} />
+                  <div className="flex items-center ml-2">
+                    <div className="text-[10px] text-slate-600 font-mono">↺ rescan</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Step progress timeline */}
+              <div className="flex items-center gap-0.5 mt-6">
+                {PIPELINE_SEQUENCE.map((s, i) => (
+                  <div key={i} className="flex-1 h-1 rounded-full overflow-hidden transition-all duration-300"
+                    style={{ background: i <= seqIndex ? s.color : "rgba(255,255,255,0.06)" }} />
+                ))}
+              </div>
+              <div className="flex justify-between text-[10px] text-slate-600 mt-1 font-mono">
+                <span>0:00</span><span>← 45 seconds total →</span><span>0:45</span>
+              </div>
+
+              {/* Timing markers */}
+              <div className="grid grid-cols-4 gap-3 mt-5">
+                {[
+                  { icon: "⚡", val: "< 1s", label: "PR → pipeline trigger" },
+                  { icon: "🔍", val: "~3s", label: "Vale full scan" },
+                  { icon: "🤖", val: "~8s", label: "Gemini rewrite" },
+                  { icon: "🚀", val: "~2s", label: "Docs deploy" },
+                ].map(m => (
+                  <div key={m.label} className="rounded-xl bg-white/3 border border-white/5 p-3 text-center">
+                    <div className="text-lg mb-1">{m.icon}</div>
+                    <div className="text-slate-200 font-black text-sm font-mono">{m.val}</div>
+                    <div className="text-slate-600 text-[10px] mt-0.5 leading-tight">{m.label}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Right: Live detail panel */}
+            <div className="flex flex-col">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={activeNode}
+                  initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -12 }}
+                  transition={{ duration: 0.25 }}
+                  className="flex-1 p-5 flex flex-col gap-4"
+                >
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: activeSeq.color }} />
+                      <span className="text-[10px] font-mono uppercase tracking-widest" style={{ color: activeSeq.color }}>
+                        {activeSeq.label}
+                      </span>
+                    </div>
+                    <h3 className="text-slate-100 font-black text-lg leading-snug mb-2">{detail.title}</h3>
+                    <p className="text-slate-400 text-xs leading-relaxed">{detail.body}</p>
+                  </div>
+
+                  {/* Terminal output */}
+                  <div className="rounded-xl bg-[#0d1117] border border-slate-700/40 overflow-hidden">
+                    <div className="flex items-center gap-2 px-3 py-2 bg-[#161b22] border-b border-slate-700/30">
+                      <div className="flex gap-1">
+                        <div className="w-2 h-2 rounded-full bg-red-500/50" />
+                        <div className="w-2 h-2 rounded-full bg-amber-400/50" />
+                        <div className="w-2 h-2 rounded-full bg-green-500/50" />
+                      </div>
+                      <span className="text-slate-600 text-[10px] font-mono">GitHub Actions Runner</span>
+                    </div>
+                    <div className="p-3 space-y-1">
+                      {detail.terminal.map((line, i) => (
+                        <motion.div
+                          key={line}
+                          initial={{ opacity: 0, x: -4 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: i * 0.08 }}
+                          className={`text-[11px] font-mono ${line.startsWith("$") ? "text-slate-300" : line.startsWith("  ✓") || line.startsWith("  ✔") ? "text-green-400" : line.includes("error") || line.includes("✖") ? "text-red-400" : "text-slate-500"}`}
+                        >
+                          {line}
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="text-[10px] text-slate-600 text-center">
+                    Click any pipeline node to inspect · auto-cycling every 2s
+                  </div>
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          </div>
+
+          {/* GitHub Actions toggle */}
+          <div className="border-t border-white/5">
+            <button
+              onClick={() => setShowActions(v => !v)}
+              className="w-full flex items-center justify-center gap-2.5 px-6 py-3.5 text-sm font-semibold transition-all duration-200 group"
+              style={{ background: showActions ? "rgba(139,92,246,0.08)" : "transparent" }}
+            >
+              <motion.div animate={{ rotate: showActions ? 180 : 0 }} transition={{ duration: 0.3 }}
+                className={`flex items-center justify-center w-5 h-5 rounded-full border transition-colors ${showActions ? "border-purple-400 text-purple-400" : "border-slate-600 text-slate-500 group-hover:border-purple-400 group-hover:text-purple-300"}`}>
+                <ChevronDown className="w-3 h-3" />
+              </motion.div>
+              <span className={`transition-colors ${showActions ? "text-purple-300" : "text-slate-500 group-hover:text-purple-400"}`}>
+                {showActions ? "Hide" : "GitHub Actions"} — see the actual workflow running this pipeline
+              </span>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-500/15 border border-purple-500/25 text-purple-400">LIVE</span>
+            </button>
+
+            <AnimatePresence>
+              {showActions && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.35, ease: "easeInOut" }}
+                  className="overflow-hidden"
+                >
+                  <div className="p-5 pt-0 bg-navy-950/30 border-t border-purple-500/10">
+                    <div className="rounded-xl overflow-hidden border border-slate-700/40 mt-4">
+                      <div className="flex items-center gap-3 px-4 py-3 bg-[#161b22] border-b border-slate-700/30">
+                        <Github className="w-4 h-4 text-slate-400" />
+                        <span className="text-slate-300 text-sm font-semibold">Invisible Mentors — Lint, Mentor & Deploy</span>
+                        <span className="ml-auto text-xs text-green-400 font-mono flex items-center gap-1">
+                          <motion.div className="w-1.5 h-1.5 rounded-full bg-green-400" animate={{ scale: [1,1.3,1] }} transition={{ duration: 1, repeat: Infinity }} />
+                          In progress
+                        </span>
+                      </div>
+                      <div className="divide-y divide-slate-800/60">
+                        {ACTION_STEPS.map((step, i) => {
+                          const isActive = i === actionStepIdx;
+                          const isDone = i < actionStepIdx;
+                          const isQueued = i > actionStepIdx;
+                          return (
+                            <motion.div
+                              key={step.name}
+                              animate={{ background: isActive ? "rgba(139,92,246,0.08)" : "transparent" }}
+                              className="flex items-center gap-4 px-4 py-3"
+                            >
+                              <div className="w-5 h-5 flex items-center justify-center shrink-0">
+                                {isDone && <Check className="w-4 h-4 text-green-400" />}
+                                {isActive && (
+                                  <motion.div className="w-4 h-4 border-2 border-purple-400 border-t-transparent rounded-full"
+                                    animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }} />
+                                )}
+                                {isQueued && <div className="w-3 h-3 rounded-full bg-slate-700" />}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className={`text-sm font-semibold ${isActive ? "text-purple-300" : isDone ? "text-slate-300" : "text-slate-600"}`}>{step.name}</div>
+                                <div className={`text-[11px] font-mono mt-0.5 truncate ${isActive ? "text-slate-400" : "text-slate-600"}`}>{step.cmd}</div>
+                              </div>
+                              <div className={`text-[11px] font-mono shrink-0 ${isActive ? "text-purple-400" : isDone ? "text-green-500/70" : "text-slate-700"}`}>
+                                {isDone ? step.dur : isActive ? "running…" : "queued"}
+                              </div>
+                            </motion.div>
+                          );
+                        })}
+                      </div>
+                      <div className="flex items-center gap-3 px-4 py-3 bg-[#0d1117] border-t border-slate-800">
+                        <a href="https://github.com/saisravan909/Invisible-Mentors/actions" target="_blank" rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-purple-400 transition-colors">
+                          <ExternalLink className="w-3 h-3" /> View all live runs
+                        </a>
+                        <a href="https://github.com/saisravan909/Invisible-Mentors/blob/main/.github/workflows/main.yml" target="_blank" rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-purple-400 transition-colors ml-4">
+                          <Code2 className="w-3 h-3" /> Full workflow YAML
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </motion.div>
       </div>
     </section>
   );
