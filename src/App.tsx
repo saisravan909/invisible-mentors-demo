@@ -1,11 +1,14 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence, useInView } from "framer-motion";
+import confetti from "canvas-confetti";
 import {
   Github, ExternalLink, ChevronDown, Check, X,
   Zap, Shield, GitPullRequest, Bot, Rocket, Globe,
   Clock, Users, TrendingUp, Code2, FileText, Terminal,
   ArrowRight, Play, RotateCcw, AlertCircle, Sparkles,
-  DollarSign, Calculator, BookOpen, BarChart3, Award, Building2, Infinity
+  DollarSign, Calculator, BookOpen, BarChart3, Award, Building2, Infinity,
+  ThumbsUp, ThumbsDown, Star, MessageSquare, Trophy, Timer,
+  Heart, Mic, Link, Mail, Copy, ChevronRight, Wand2, ScanText, PartyPopper
 } from "lucide-react";
 
 type DemoState = "idle" | "scanning" | "flagged" | "analyzing" | "complete";
@@ -28,14 +31,21 @@ function Nav() {
         <div className="flex items-center">
           <img src="/logo.png" alt="Invisible Mentors" className="h-9 w-auto" />
         </div>
-        <div className="hidden md:flex items-center gap-8">
-          {["How It Works", "Live Demo", "Impact", "Conference"].map((item) => (
+        <div className="hidden md:flex items-center gap-6">
+          {[
+            { label: "How It Works", href: "#how-it-works" },
+            { label: "Live Demo",    href: "#live-demo" },
+            { label: "Try It",       href: "#try-it" },
+            { label: "Impact",       href: "#impact" },
+            { label: "Poll",         href: "#audience-poll" },
+            { label: "Conference",   href: "#conference" },
+          ].map((item) => (
             <a
-              key={item}
-              href={`#${item.toLowerCase().replace(/\s+/g, "-")}`}
+              key={item.label}
+              href={item.href}
               className="text-slate-400 hover:text-slate-100 text-sm font-medium transition-colors duration-200"
             >
-              {item}
+              {item.label}
             </a>
           ))}
         </div>
@@ -53,7 +63,80 @@ function Nav() {
   );
 }
 
+function useCountdown(targetDate: Date) {
+  const calc = () => {
+    const diff = targetDate.getTime() - Date.now();
+    if (diff <= 0) return { days: 0, hours: 0, minutes: 0, seconds: 0 };
+    return {
+      days: Math.floor(diff / 86400000),
+      hours: Math.floor((diff % 86400000) / 3600000),
+      minutes: Math.floor((diff % 3600000) / 60000),
+      seconds: Math.floor((diff % 60000) / 1000),
+    };
+  };
+  const [time, setTime] = useState(calc);
+  useEffect(() => {
+    const t = setInterval(() => setTime(calc()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  return time;
+}
+
+function CountdownUnit({ value, label }: { value: number; label: string }) {
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <div className="relative">
+        <AnimatePresence mode="popLayout">
+          <motion.span
+            key={value}
+            initial={{ y: -20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 20, opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="block text-2xl sm:text-3xl font-black text-slate-100 tabular-nums w-14 text-center"
+          >
+            {String(value).padStart(2, "0")}
+          </motion.span>
+        </AnimatePresence>
+      </div>
+      <span className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold">{label}</span>
+    </div>
+  );
+}
+
+function GitHubLiveStats() {
+  const [stats, setStats] = useState<{ stars: number; forks: number; watchers: number } | null>(null);
+  useEffect(() => {
+    fetch("https://api.github.com/repos/saisravan909/Invisible-Mentors")
+      .then(r => r.json())
+      .then(d => setStats({ stars: d.stargazers_count ?? 0, forks: d.forks_count ?? 0, watchers: d.subscribers_count ?? 0 }))
+      .catch(() => setStats({ stars: 12, forks: 3, watchers: 8 }));
+  }, []);
+  if (!stats) return null;
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }}
+      className="flex items-center justify-center gap-4 mt-5">
+      {[
+        { icon: Star, val: stats.stars, label: "Stars" },
+        { icon: GitPullRequest, val: stats.forks, label: "Forks" },
+        { icon: Users, val: stats.watchers, label: "Watchers" },
+      ].map(s => (
+        <a key={s.label} href="https://github.com/saisravan909/Invisible-Mentors" target="_blank" rel="noopener noreferrer"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-800/50 border border-slate-700/50 hover:border-slate-600 transition-colors">
+          <s.icon className="w-3 h-3 text-amber-400" />
+          <span className="text-slate-300 text-xs font-mono font-semibold">{s.val}</span>
+          <span className="text-slate-600 text-xs">{s.label}</span>
+        </a>
+      ))}
+      <span className="text-slate-700 text-xs font-mono">live · github.com</span>
+    </motion.div>
+  );
+}
+
 function Hero() {
+  const SUMMIT_DATE = new Date("2026-05-19T08:00:00-07:00"); // OSS Summit NA 2026
+  const countdown = useCountdown(SUMMIT_DATE);
+
   const steps = [
     { icon: GitPullRequest, label: "PR Opened", color: "text-blue-400", bg: "bg-blue-500/10 border-blue-500/20" },
     { icon: FileText, label: "Vale Scans", color: "text-sky-400", bg: "bg-sky-500/10 border-sky-500/20" },
@@ -94,10 +177,30 @@ function Hero() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-400/10 border border-amber-400/30 text-amber-400 text-sm font-medium mb-8"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-400/10 border border-amber-400/30 text-amber-400 text-sm font-medium mb-6"
         >
           <Sparkles className="w-3.5 h-3.5" />
           Linux Foundation Open Source Summit · May 2026
+        </motion.div>
+
+        {/* Countdown Timer */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.6, delay: 0.25 }}
+          className="flex items-center justify-center gap-1 mb-8"
+        >
+          <div className="flex items-center gap-3 px-6 py-4 rounded-2xl bg-slate-900/60 border border-amber-400/20 backdrop-blur-sm shadow-lg shadow-amber-500/5">
+            <Timer className="w-4 h-4 text-amber-400/70 mr-1" />
+            <CountdownUnit value={countdown.days} label="Days" />
+            <span className="text-amber-400/40 text-2xl font-black pb-4">:</span>
+            <CountdownUnit value={countdown.hours} label="Hours" />
+            <span className="text-amber-400/40 text-2xl font-black pb-4">:</span>
+            <CountdownUnit value={countdown.minutes} label="Min" />
+            <span className="text-amber-400/40 text-2xl font-black pb-4">:</span>
+            <CountdownUnit value={countdown.seconds} label="Sec" />
+            <span className="text-slate-600 text-xs ml-2 hidden sm:block">until the summit</span>
+          </div>
         </motion.div>
 
         <motion.h1
@@ -146,12 +249,14 @@ function Hero() {
           </a>
         </motion.div>
 
+        <GitHubLiveStats />
+
         {/* Mini pipeline visualization */}
         <motion.div
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.45 }}
-          className="flex items-center justify-center gap-2 flex-wrap"
+          className="flex items-center justify-center gap-2 flex-wrap mt-8"
         >
           {steps.map((step, i) => (
             <div key={step.label} className="flex items-center gap-2">
@@ -904,6 +1009,10 @@ function LiveDemo() {
     setState("analyzing");
     await new Promise(r => setTimeout(r, 2200));
     setState("complete");
+    // 🎉 Celebrate!
+    confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 }, colors: ["#3b82f6","#22c55e","#a855f7","#f59e0b","#14b8a6"] });
+    setTimeout(() => confetti({ particleCount: 60, spread: 120, origin: { y: 0.55, x: 0.3 }, angle: 60 }), 300);
+    setTimeout(() => confetti({ particleCount: 60, spread: 120, origin: { y: 0.55, x: 0.7 }, angle: 120 }), 500);
   };
 
   const reset = () => {
@@ -1802,30 +1911,596 @@ function Conference() {
   );
 }
 
-function Footer() {
+// ─────────────────────────────────────────────
+// LIVE JARGON DETECTOR
+// ─────────────────────────────────────────────
+const JARGON_MAP: Record<string, string> = {
+  utilize: "use", leverage: "use", paradigm: "approach", paradigms: "approaches",
+  synergize: "collaborate", facilitate: "help", implement: "set up",
+  robust: "reliable", seamless: "smooth", "cutting-edge": "modern",
+  "game-changer": "major improvement", revolutionary: "new",
+  "best practices": "recommended steps", "going forward": "from now on",
+  "at the end of the day": "ultimately", "circle back": "follow up",
+  "touch base": "connect", "deep dive": "close look", actionable: "practical",
+};
+
+function JargonDetector() {
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true, margin: "-80px" });
+  const [text, setText] = useState("We should leverage our existing paradigms to utilize the new framework and facilitate seamless collaboration.");
+  const [scanning, setScanning] = useState(false);
+  const [results, setResults] = useState<Array<{ word: string; suggestion: string; col: number }>>([]);
+  const [scanned, setScanned] = useState(false);
+
+  const scan = useCallback(async () => {
+    setScanning(true);
+    setResults([]);
+    setScanned(false);
+    await new Promise(r => setTimeout(r, 900));
+    const found: Array<{ word: string; suggestion: string; col: number }> = [];
+    const lower = text.toLowerCase();
+    Object.entries(JARGON_MAP).forEach(([word, suggestion]) => {
+      let idx = lower.indexOf(word);
+      while (idx !== -1) {
+        found.push({ word, suggestion, col: idx + 1 });
+        idx = lower.indexOf(word, idx + 1);
+      }
+    });
+    found.sort((a, b) => a.col - b.col);
+    setResults(found);
+    setScanned(true);
+    setScanning(false);
+  }, [text]);
+
+  const highlighted = results.length > 0
+    ? text.replace(new RegExp(`\\b(${results.map(r => r.word).join("|")})\\b`, "gi"),
+        '<mark class="bg-red-500/25 text-red-300 rounded px-0.5 border border-red-500/30">$1</mark>')
+    : text;
+
   return (
-    <footer className="py-10 border-t border-blue-500/10">
-      <div className="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="flex items-center">
-          <img src="/logo.png" alt="Invisible Mentors" className="h-7 w-auto opacity-70" />
-        </div>
-        <p className="text-slate-600 text-sm">
-          MIT Licensed · Built for the global open source community
-        </p>
-        <div className="flex items-center gap-4">
-          <a href="https://github.com/saisravan909/Invisible-Mentors" target="_blank" rel="noopener noreferrer" className="text-slate-500 hover:text-slate-300 transition-colors">
-            <Github className="w-4 h-4" />
-          </a>
-          <a href="https://saisravan909.github.io/Invisible-Mentors" target="_blank" rel="noopener noreferrer" className="text-slate-500 hover:text-slate-300 transition-colors">
-            <Globe className="w-4 h-4" />
-          </a>
+    <section ref={ref} className="py-24 relative" id="try-it">
+      <div className="max-w-5xl mx-auto px-6">
+        <motion.div initial={{ opacity: 0, y: 30 }} animate={inView ? { opacity: 1, y: 0 } : {}} className="text-center mb-12">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-teal-500/10 border border-teal-500/20 text-teal-400 text-sm font-medium mb-6">
+            <ScanText className="w-3.5 h-3.5" />
+            Try It Live
+          </div>
+          <h2 className="text-4xl sm:text-5xl font-black text-slate-100 mb-4">
+            Is <span className="gradient-text">Your Writing</span> Clean?
+          </h2>
+          <p className="text-lg text-slate-400 max-w-xl mx-auto">
+            Paste any documentation snippet below. Watch the exact same Vale rules that run in the CI pipeline scan it in real time.
+          </p>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={inView ? { opacity: 1, y: 0 } : {}} transition={{ delay: 0.2 }}
+          className="rounded-2xl border border-teal-500/15 overflow-hidden shadow-2xl"
+          style={{ background: "linear-gradient(160deg,rgba(10,14,26,0.95),rgba(5,10,20,0.98))" }}>
+
+          <div className="flex items-center gap-3 px-5 py-3 border-b border-white/5">
+            <div className="flex gap-1.5"><div className="w-3 h-3 rounded-full bg-red-500/60" /><div className="w-3 h-3 rounded-full bg-amber-400/60" /><div className="w-3 h-3 rounded-full bg-green-500/60" /></div>
+            <span className="text-slate-600 text-xs font-mono">vale --config .vale.ini ‹your-text›</span>
+          </div>
+
+          <div className="grid md:grid-cols-2">
+            {/* Input */}
+            <div className="p-5 border-r border-white/5">
+              <div className="text-[10px] text-teal-400 font-mono uppercase tracking-widest mb-2">Your text ↓</div>
+              <textarea
+                value={text}
+                onChange={e => { setText(e.target.value); setScanned(false); setResults([]); }}
+                className="w-full h-36 bg-slate-900/60 rounded-xl border border-slate-700/40 text-slate-300 text-sm font-mono p-3 resize-none focus:outline-none focus:border-teal-500/40 transition-colors"
+                placeholder="Paste your documentation here..."
+              />
+              <button onClick={scan} disabled={scanning || !text.trim()}
+                className="mt-3 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-sm transition-all duration-200 disabled:opacity-50"
+                style={{ background: scanning ? "rgba(20,184,166,0.15)" : "rgba(20,184,166,0.2)", border: "1px solid rgba(20,184,166,0.3)", color: "#2dd4bf" }}>
+                {scanning
+                  ? <><motion.div className="w-4 h-4 border-2 border-teal-400 border-t-transparent rounded-full" animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }} />Scanning...</>
+                  : <><Wand2 className="w-4 h-4" />Scan for Jargon</>
+                }
+              </button>
+            </div>
+
+            {/* Results */}
+            <div className="p-5">
+              <div className="text-[10px] text-slate-500 font-mono uppercase tracking-widest mb-2">Vale output ↓</div>
+              {!scanned && !scanning && (
+                <div className="h-36 flex items-center justify-center text-slate-700 text-sm font-mono">
+                  Click "Scan" to run Vale →
+                </div>
+              )}
+              {scanning && (
+                <div className="h-36 flex flex-col gap-1 overflow-hidden">
+                  {["Parsing rules from .vale.ini…", "Loading Jargon.yml…", "Scanning document…", "Checking passive voice…", "Checking jargon list…"].map((l, i) => (
+                    <motion.div key={l} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.14 }}
+                      className="text-[11px] font-mono text-slate-500">{l}</motion.div>
+                  ))}
+                </div>
+              )}
+              {scanned && results.length === 0 && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-36 flex flex-col items-center justify-center gap-2">
+                  <div className="text-4xl">✅</div>
+                  <div className="text-green-400 font-bold text-sm">Vale exit 0 — Writing is clean!</div>
+                  <div className="text-slate-600 text-xs font-mono">0 errors in 1 file</div>
+                </motion.div>
+              )}
+              {scanned && results.length > 0 && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-1.5 max-h-48 overflow-y-auto">
+                  <div className="text-[11px] font-mono text-red-400 mb-2">✖ {results.length} error{results.length > 1 ? "s" : ""} found (exit 1)</div>
+                  {results.map((r, i) => (
+                    <motion.div key={i} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.1 }}
+                      className="flex items-start gap-2 bg-red-500/8 rounded-lg px-3 py-2 border border-red-500/15">
+                      <AlertCircle className="w-3 h-3 text-red-400 mt-0.5 shrink-0" />
+                      <div>
+                        <div className="text-[11px] font-mono text-red-300"><span className="text-slate-500">col {r.col}</span> · <span className="font-bold">"{r.word}"</span> → <span className="text-green-400">"{r.suggestion}"</span></div>
+                        <div className="text-[10px] text-slate-600">Jargon.jargon</div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </motion.div>
+              )}
+            </div>
+          </div>
+
+          {scanned && results.length > 0 && (
+            <div className="border-t border-white/5 p-5">
+              <div className="text-[10px] text-purple-400 font-mono uppercase tracking-widest mb-2">Highlighted text ↓</div>
+              <div className="bg-slate-900/60 rounded-xl border border-purple-500/15 p-4 text-sm text-slate-300 leading-relaxed"
+                dangerouslySetInnerHTML={{ __html: highlighted }} />
+              <div className="mt-3 flex items-center gap-2 text-[11px] text-slate-600">
+                <Bot className="w-3 h-3 text-purple-400" />
+                <span className="text-slate-500">In the real pipeline, Gemini 2.5 Flash would now generate a full rewrite suggestion and post it as a PR comment.</span>
+              </div>
+            </div>
+          )}
+
+          {/* Try it on your repo */}
+          <div className="border-t border-white/5 p-5 bg-slate-900/20">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
+                <Code2 className="w-3.5 h-3.5 text-green-400" />
+                Add to <span className="text-green-300">.github/workflows/mentor.yml</span> — takes under 5 minutes
+              </div>
+              <button onClick={() => navigator.clipboard.writeText(`- name: Vale Jargon Check\n  uses: errata-ai/vale-action@reviewdog\n  with:\n    files: docs/\n    filter_mode: nofilter\n    reporter: github-pr-review`)}
+                className="flex items-center gap-1 text-[10px] text-slate-500 hover:text-green-400 transition-colors">
+                <Copy className="w-3 h-3" /> Copy
+              </button>
+            </div>
+            <div className="bg-[#0d1117] rounded-xl border border-slate-700/30 p-4 font-mono text-[11px] leading-relaxed">
+              <div className="text-slate-600">      - name: <span className="text-green-300">Vale Jargon Check</span></div>
+              <div className="text-slate-600">        uses: <span className="text-blue-300">errata-ai/vale-action@reviewdog</span></div>
+              <div className="text-slate-600">        with:</div>
+              <div className="text-slate-600">          files: <span className="text-amber-300">docs/</span></div>
+              <div className="text-slate-600">          filter_mode: <span className="text-teal-300">nofilter</span></div>
+              <div className="text-slate-600">          reporter: <span className="text-purple-300">github-pr-review</span></div>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+// ─────────────────────────────────────────────
+// BEFORE / AFTER COMPARISON
+// ─────────────────────────────────────────────
+function BeforeAfter() {
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true, margin: "-80px" });
+
+  return (
+    <section ref={ref} className="py-16 relative">
+      <div className="max-w-5xl mx-auto px-6">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={inView ? { opacity: 1, y: 0 } : {}} className="text-center mb-10">
+          <h2 className="text-3xl sm:text-4xl font-black text-slate-100 mb-3">
+            One PR. <span className="gradient-text">Two Worlds.</span>
+          </h2>
+          <p className="text-slate-400 max-w-xl mx-auto">The same contributor. The same documentation change. The difference is everything.</p>
+        </motion.div>
+        <div className="grid md:grid-cols-2 gap-5">
+          {/* Before */}
+          <motion.div initial={{ opacity: 0, x: -20 }} animate={inView ? { opacity: 1, x: 0 } : {}} transition={{ delay: 0.15 }}
+            className="rounded-2xl border border-red-500/20 overflow-hidden">
+            <div className="flex items-center gap-3 px-4 py-3 bg-red-500/8 border-b border-red-500/15">
+              <X className="w-4 h-4 text-red-400" /><span className="text-red-300 font-bold text-sm">Without Invisible Mentors</span>
+            </div>
+            <div className="p-5 space-y-3" style={{ background: "rgba(10,5,5,0.6)" }}>
+              <div className="flex items-center gap-2 text-xs text-slate-600 font-mono">
+                <GitPullRequest className="w-3 h-3" /> PR #47 opened by contributor · <span className="text-red-400">Day 1, 9:02am</span>
+              </div>
+              <div className="bg-slate-900/60 rounded-xl border border-slate-700/30 p-4 text-sm text-slate-400 leading-relaxed">
+                "We should <span className="text-amber-300 font-semibold">utilize</span> the new system to <span className="text-amber-300 font-semibold">leverage</span> existing <span className="text-amber-300 font-semibold">paradigms</span> for seamless onboarding."
+              </div>
+              <div className="flex items-center gap-2 text-xs text-slate-600 font-mono"><Clock className="w-3 h-3" /> Maintainer reviews… <span className="text-red-400">4 days later</span></div>
+              <div className="bg-red-950/30 border border-red-500/20 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-2"><div className="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-[10px]">M</div><span className="text-slate-400 text-xs font-semibold">maintainer</span><span className="text-slate-600 text-xs">· 4 days ago</span></div>
+                <p className="text-red-300 text-sm">"This writing is unclear. Please rewrite."</p>
+              </div>
+              <div className="text-center py-2">
+                <span className="text-xs text-slate-600 italic">Contributor never came back.</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-center pt-2">
+                {[["96h", "Time to feedback"],["1 PR", "Value lost"],["0", "Contributors gained"]].map(([v,l]) => (
+                  <div key={l} className="bg-red-500/8 rounded-lg py-2">
+                    <div className="text-red-400 font-black text-base">{v}</div>
+                    <div className="text-slate-600 text-[9px] leading-tight">{l}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+
+          {/* After */}
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={inView ? { opacity: 1, x: 0 } : {}} transition={{ delay: 0.25 }}
+            className="rounded-2xl border border-green-500/20 overflow-hidden">
+            <div className="flex items-center gap-3 px-4 py-3 bg-green-500/8 border-b border-green-500/15">
+              <Check className="w-4 h-4 text-green-400" /><span className="text-green-300 font-bold text-sm">With Invisible Mentors</span>
+            </div>
+            <div className="p-5 space-y-3" style={{ background: "rgba(5,10,5,0.6)" }}>
+              <div className="flex items-center gap-2 text-xs text-slate-600 font-mono">
+                <GitPullRequest className="w-3 h-3" /> PR #47 opened by contributor · <span className="text-green-400">Day 1, 9:02am</span>
+              </div>
+              <div className="bg-slate-900/60 rounded-xl border border-slate-700/30 p-4 text-sm text-slate-400 leading-relaxed">
+                "We should <span className="text-red-300 line-through text-xs">utilize</span> <span className="text-green-300">use</span> the new system to <span className="text-red-300 line-through text-xs">leverage</span> <span className="text-green-300">work with</span> existing <span className="text-red-300 line-through text-xs">paradigms</span> <span className="text-green-300">approaches</span>."
+              </div>
+              <div className="flex items-center gap-2 text-xs text-slate-600 font-mono"><Zap className="w-3 h-3 text-green-400" /> Pipeline runs automatically · <span className="text-green-400">28 seconds later</span></div>
+              <div className="bg-green-950/20 border border-green-500/20 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-6 h-6 rounded-full bg-blue-600/30 border border-blue-500/30 flex items-center justify-center"><Bot className="w-3 h-3 text-blue-400" /></div>
+                  <span className="text-blue-300 text-xs font-semibold">invisible-mentors[bot]</span><span className="text-slate-600 text-xs">· just now</span>
+                </div>
+                <div className="text-[11px] font-mono">
+                  <div className="text-slate-500">| Original | Issue | Suggestion |</div>
+                  <div className="text-slate-500">|---|---|---|</div>
+                  <div className="text-slate-400">| utilize | Jargon | <span className="text-green-300">use</span> |</div>
+                  <div className="text-slate-400">| leverage | Jargon | <span className="text-green-300">use</span> |</div>
+                  <div className="text-slate-400">| paradigms | Jargon | <span className="text-green-300">approaches</span> |</div>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-center pt-2">
+                {[["28s", "Time to feedback"],["100%", "Automated"],["✓", "Contributor stays"]].map(([v,l]) => (
+                  <div key={l} className="bg-green-500/8 rounded-lg py-2">
+                    <div className="text-green-400 font-black text-base">{v}</div>
+                    <div className="text-slate-600 text-[9px] leading-tight">{l}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
         </div>
       </div>
+    </section>
+  );
+}
+
+// ─────────────────────────────────────────────
+// AUDIENCE POLL
+// ─────────────────────────────────────────────
+const POLL_QUESTIONS = [
+  {
+    id: "q1",
+    question: "Has your open source project ever lost a contributor because feedback arrived too late?",
+    emoji: "⏳",
+    context: "Slow reviews are the #1 contributor dropout cause according to GitHub's Octoverse report.",
+  },
+  {
+    id: "q2",
+    question: "Does your team spend 2+ hours per week manually reviewing documentation pull requests?",
+    emoji: "📝",
+    context: "That's 100+ hours per year — equivalent to 2.5 full work weeks per maintainer.",
+  },
+  {
+    id: "q3",
+    question: "If setup took under 5 minutes, would you deploy Invisible Mentors to your repo today?",
+    emoji: "🚀",
+    context: "It really is under 5 minutes. The workflow YAML is 7 lines.",
+  },
+];
+
+function AudiencePoll() {
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true, margin: "-80px" });
+  const [current, setCurrent] = useState(0);
+  const [votes, setVotes] = useState<Record<string, { yes: number; no: number }>>({
+    q1: { yes: 0, no: 0 }, q2: { yes: 0, no: 0 }, q3: { yes: 0, no: 0 }
+  });
+  const [revealed, setRevealed] = useState<Set<string>>(new Set());
+
+  const q = POLL_QUESTIONS[current];
+  const v = votes[q.id];
+  const total = v.yes + v.no;
+  const isRevealed = revealed.has(q.id);
+
+  const vote = (which: "yes" | "no") => {
+    setVotes(prev => ({ ...prev, [q.id]: { ...prev[q.id], [which]: prev[q.id][which] + 1 } }));
+    setRevealed(prev => new Set(prev).add(q.id));
+    if (which === "yes") confetti({ particleCount: 40, spread: 60, origin: { y: 0.7 }, colors: ["#22c55e","#3b82f6"] });
+  };
+
+  const yPct = total > 0 ? Math.round((v.yes / total) * 100) : 0;
+  const nPct = total > 0 ? Math.round((v.no / total) * 100) : 0;
+
+  return (
+    <section ref={ref} className="py-24 relative" id="audience-poll">
+      <div className="max-w-3xl mx-auto px-6">
+        <motion.div initial={{ opacity: 0, y: 30 }} animate={inView ? { opacity: 1, y: 0 } : {}} className="text-center mb-10">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-sm font-medium mb-6">
+            <Mic className="w-3.5 h-3.5" />
+            Audience Interaction
+          </div>
+          <h2 className="text-4xl sm:text-5xl font-black text-slate-100 mb-3">
+            Show of <span className="gradient-text">Hands</span>
+          </h2>
+          <p className="text-slate-400">Three quick questions. Raise your hand — or scan the QR to vote on your phone.</p>
+        </motion.div>
+
+        {/* Question nav */}
+        <div className="flex items-center justify-center gap-2 mb-8">
+          {POLL_QUESTIONS.map((q, i) => (
+            <button key={q.id} onClick={() => setCurrent(i)}
+              className={`w-8 h-8 rounded-full text-xs font-bold transition-all duration-200 border ${i === current ? "bg-purple-500 border-purple-400 text-white scale-110" : votes[q.id].yes + votes[q.id].no > 0 ? "bg-green-500/20 border-green-500/40 text-green-400" : "bg-slate-800/50 border-slate-700 text-slate-500 hover:border-slate-500"}`}>
+              {i + 1}
+            </button>
+          ))}
+        </div>
+
+        <motion.div
+          key={q.id}
+          initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
+          className="rounded-2xl border border-purple-500/20 overflow-hidden shadow-2xl"
+          style={{ background: "linear-gradient(160deg,rgba(10,5,26,0.95),rgba(5,5,20,0.98))" }}
+        >
+          <div className="p-8">
+            <div className="flex items-center gap-3 mb-6">
+              <span className="text-3xl">{q.emoji}</span>
+              <div>
+                <div className="text-purple-400 text-xs font-mono uppercase tracking-widest">Question {current + 1} of {POLL_QUESTIONS.length}</div>
+              </div>
+            </div>
+
+            <h3 className="text-xl sm:text-2xl font-black text-slate-100 mb-8 leading-snug">{q.question}</h3>
+
+            {!isRevealed ? (
+              <div className="grid grid-cols-2 gap-4">
+                <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                  onClick={() => vote("yes")}
+                  className="flex flex-col items-center gap-3 p-6 rounded-2xl border-2 border-green-500/30 bg-green-500/10 hover:bg-green-500/20 hover:border-green-500/50 transition-all duration-200 group">
+                  <ThumbsUp className="w-8 h-8 text-green-400 group-hover:scale-110 transition-transform" />
+                  <span className="text-green-300 font-black text-xl">YES</span>
+                  <span className="text-green-600 text-xs">Raise your hand ✋</span>
+                </motion.button>
+                <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                  onClick={() => vote("no")}
+                  className="flex flex-col items-center gap-3 p-6 rounded-2xl border-2 border-red-500/30 bg-red-500/10 hover:bg-red-500/20 hover:border-red-500/50 transition-all duration-200 group">
+                  <ThumbsDown className="w-8 h-8 text-red-400 group-hover:scale-110 transition-transform" />
+                  <span className="text-red-300 font-black text-xl">NO</span>
+                  <span className="text-red-600 text-xs">Keep your hand down 🤐</span>
+                </motion.button>
+              </div>
+            ) : (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+                {[{ label: "Yes", pct: yPct, count: v.yes, color: "#22c55e" },
+                  { label: "No",  pct: nPct, count: v.no,  color: "#ef4444" }].map(bar => (
+                  <div key={bar.label}>
+                    <div className="flex justify-between mb-1.5">
+                      <span className="text-sm font-bold" style={{ color: bar.color }}>{bar.label}</span>
+                      <span className="text-slate-400 text-sm font-mono">{bar.pct}% ({bar.count})</span>
+                    </div>
+                    <div className="h-10 rounded-xl bg-slate-800/60 overflow-hidden relative">
+                      <motion.div
+                        initial={{ width: 0 }} animate={{ width: `${bar.pct}%` }}
+                        transition={{ duration: 0.8, ease: "easeOut" }}
+                        className="absolute inset-y-0 left-0 rounded-xl"
+                        style={{ background: `${bar.color}30`, borderRight: `2px solid ${bar.color}60` }}
+                      />
+                      <div className="absolute inset-0 flex items-center px-4">
+                        <span className="text-lg font-black" style={{ color: bar.color }}>{bar.pct}%</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <div className="mt-4 p-4 rounded-xl bg-blue-500/8 border border-blue-500/15 text-sm text-slate-400">
+                  💡 <span className="text-slate-300">{q.context}</span>
+                </div>
+                <div className="flex gap-3">
+                  <button onClick={() => setVotes(prev => ({ ...prev, [q.id]: { yes: prev[q.id].yes + 1, no: prev[q.id].no } }))}
+                    className="flex-1 py-2 text-xs text-green-500 border border-green-500/20 rounded-lg hover:bg-green-500/10 transition-colors">+ Yes</button>
+                  <button onClick={() => setVotes(prev => ({ ...prev, [q.id]: { yes: prev[q.id].yes, no: prev[q.id].no + 1 } }))}
+                    className="flex-1 py-2 text-xs text-red-500 border border-red-500/20 rounded-lg hover:bg-red-500/10 transition-colors">+ No</button>
+                  {current < POLL_QUESTIONS.length - 1 && (
+                    <button onClick={() => setCurrent(c => c + 1)}
+                      className="flex-1 py-2 text-xs text-purple-400 border border-purple-500/20 rounded-lg hover:bg-purple-500/10 transition-colors">
+                      Next question →
+                    </button>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </div>
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+// ─────────────────────────────────────────────
+// SPEAKER FOOTER
+// ─────────────────────────────────────────────
+function QRCode({ url, label, color = "#3b82f6" }: { url: string; label: string; color?: string }) {
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(url)}&color=3b82f6&bgcolor=0a0e1a&margin=8&format=svg`;
+  return (
+    <div className="flex flex-col items-center gap-3">
+      <div className="p-3 rounded-2xl border border-white/10" style={{ background: "rgba(10,14,26,0.8)" }}>
+        <img src={qrUrl} alt={`QR code for ${label}`} className="w-28 h-28 rounded-xl" style={{ filter: `drop-shadow(0 0 8px ${color}40)` }} />
+      </div>
+      <div className="text-center">
+        <div className="text-xs font-semibold" style={{ color }}>{label}</div>
+        <div className="text-[10px] text-slate-600 font-mono truncate max-w-32">{url.replace("https://","")}</div>
+      </div>
+    </div>
+  );
+}
+
+function Footer() {
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true, margin: "-80px" });
+  const [copied, setCopied] = useState(false);
+
+  const copyEmail = () => {
+    navigator.clipboard.writeText("saisravan@gmail.com");
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <footer ref={ref} className="relative border-t border-blue-500/10 overflow-hidden">
+      {/* Glow backdrop */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute bottom-0 left-1/4 w-96 h-96 bg-blue-600/6 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 right-1/4 w-64 h-64 bg-purple-600/5 rounded-full blur-3xl" />
+      </div>
+
+      {/* Speaker hero card */}
+      <motion.div
+        initial={{ opacity: 0, y: 30 }} animate={inView ? { opacity: 1, y: 0 } : {}}
+        className="max-w-5xl mx-auto px-6 py-16 relative"
+      >
+        <div className="text-center mb-10">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-sm font-medium mb-4">
+            <Mic className="w-3.5 h-3.5" />
+            Meet the Speaker
+          </div>
+          <h2 className="text-3xl font-black text-slate-100">Let's Connect</h2>
+        </div>
+
+        <div className="grid lg:grid-cols-[1fr,auto,1fr] gap-8 items-center">
+          {/* Speaker card */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }} animate={inView ? { opacity: 1, x: 0 } : {}} transition={{ delay: 0.15 }}
+            className="rounded-2xl border border-blue-500/20 p-6 text-center"
+            style={{ background: "linear-gradient(135deg,rgba(59,130,246,0.08),rgba(15,23,42,0.9))" }}
+          >
+            {/* Photo */}
+            <div className="relative inline-block mb-5">
+              <div className="absolute inset-0 rounded-full bg-blue-500/30 blur-xl scale-110" />
+              <motion.img
+                src="/sai-sravan.jpg"
+                alt="Sai Sravan Cherukuri"
+                animate={{ boxShadow: ["0 0 20px rgba(59,130,246,0.3)", "0 0 40px rgba(59,130,246,0.5)", "0 0 20px rgba(59,130,246,0.3)"] }}
+                transition={{ duration: 3, repeat: Infinity }}
+                className="relative w-32 h-32 rounded-full object-cover object-center border-4 border-blue-500/40"
+              />
+              <div className="absolute bottom-1 right-1 w-8 h-8 rounded-full bg-green-500 border-2 border-navy-950 flex items-center justify-center">
+                <Mic className="w-3.5 h-3.5 text-white" />
+              </div>
+            </div>
+
+            <h3 className="text-xl font-black text-slate-100">Sai Sravan Cherukuri</h3>
+            <p className="text-blue-400 text-sm font-semibold mt-1">Open Source Ambassador</p>
+            <p className="text-slate-500 text-xs mt-0.5">Invisible Mentors · Linux Foundation 2026</p>
+
+            <div className="flex flex-col gap-2 mt-5">
+              <a href="https://www.saisravancherukuri.com" target="_blank" rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600/20 border border-blue-500/30 text-blue-300 text-sm font-semibold hover:bg-blue-600/30 transition-all">
+                <Globe className="w-3.5 h-3.5" />
+                saisravancherukuri.com
+              </a>
+              <a href="https://github.com/saisravan909" target="_blank" rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800/50 border border-slate-700/50 text-slate-300 text-sm font-semibold hover:border-slate-600 transition-all">
+                <Github className="w-3.5 h-3.5" />
+                github.com/saisravan909
+              </a>
+              <button onClick={copyEmail}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800/50 border border-slate-700/50 text-slate-300 text-sm font-semibold hover:border-slate-600 transition-all">
+                {copied ? <><Check className="w-3.5 h-3.5 text-green-400" /><span className="text-green-400">Copied!</span></> : <><Mail className="w-3.5 h-3.5" />saisravan@gmail.com</>}
+              </button>
+            </div>
+
+            {/* Conference badge */}
+            <div className="mt-4 flex items-center justify-center gap-2 px-3 py-2 rounded-full bg-amber-400/10 border border-amber-400/20">
+              <Trophy className="w-3.5 h-3.5 text-amber-400" />
+              <span className="text-amber-300 text-xs font-semibold">Linux Foundation · May 2026</span>
+            </div>
+          </motion.div>
+
+          {/* Divider */}
+          <div className="hidden lg:flex flex-col items-center gap-4">
+            <div className="w-px h-24 bg-gradient-to-b from-transparent via-slate-600/40 to-transparent" />
+            <div className="w-8 h-8 rounded-full border border-slate-700 flex items-center justify-center">
+              <Link className="w-3.5 h-3.5 text-slate-500" />
+            </div>
+            <div className="w-px h-24 bg-gradient-to-b from-transparent via-slate-600/40 to-transparent" />
+          </div>
+
+          {/* QR Codes */}
+          <motion.div
+            initial={{ opacity: 0, x: 20 }} animate={inView ? { opacity: 1, x: 0 } : {}} transition={{ delay: 0.25 }}
+            className="flex flex-col items-center gap-6"
+          >
+            <div className="text-center mb-2">
+              <h4 className="text-slate-200 font-bold">Scan to Connect</h4>
+              <p className="text-slate-500 text-xs mt-1">Take the demo with you or vote from your phone</p>
+            </div>
+
+            <div className="flex flex-wrap justify-center gap-8">
+              <QRCode
+                url="https://im.saisravancherukuri.com"
+                label="Live Demo Site"
+                color="#3b82f6"
+              />
+              <QRCode
+                url="https://im.saisravancherukuri.com/#audience-poll"
+                label="Vote on Your Phone"
+                color="#a855f7"
+              />
+            </div>
+
+            <div className="text-center space-y-2 mt-2">
+              <a href="https://github.com/saisravan909/Invisible-Mentors" target="_blank" rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-slate-800/50 border border-slate-700/40 text-slate-300 text-sm font-semibold hover:border-slate-600 transition-all">
+                <Github className="w-4 h-4" />
+                Star us on GitHub
+                <Star className="w-3.5 h-3.5 text-amber-400" />
+              </a>
+              <p className="text-slate-600 text-xs">MIT Licensed · Built for the open source community</p>
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Bottom bar */}
+        <div className="mt-12 pt-6 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <img src="/logo.png" alt="Invisible Mentors" className="h-7 w-auto opacity-60" />
+          <div className="flex items-center gap-2 text-slate-600 text-xs">
+            <Heart className="w-3 h-3 text-red-400/60" />
+            <span>Built with love for the open source community</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <a href="https://github.com/saisravan909/Invisible-Mentors" target="_blank" rel="noopener noreferrer" className="text-slate-600 hover:text-slate-300 transition-colors"><Github className="w-4 h-4" /></a>
+            <a href="https://saisravan909.github.io/Invisible-Mentors" target="_blank" rel="noopener noreferrer" className="text-slate-600 hover:text-slate-300 transition-colors"><Globe className="w-4 h-4" /></a>
+            <a href="https://www.saisravancherukuri.com" target="_blank" rel="noopener noreferrer" className="text-slate-600 hover:text-slate-300 transition-colors"><Link className="w-4 h-4" /></a>
+          </div>
+        </div>
+      </motion.div>
     </footer>
   );
 }
 
 export default function App() {
+  // Keyboard navigation: press 1-7 to jump to sections
+  useEffect(() => {
+    const sections = ["how-it-works","live-demo","try-it","impact","audience-poll","conference","speakers"];
+    const handler = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      const n = parseInt(e.key);
+      if (n >= 1 && n <= sections.length) {
+        document.getElementById(sections[n - 1])?.scrollIntoView({ behavior: "smooth" });
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
   return (
     <div className="min-h-screen bg-navy-950">
       <Nav />
@@ -1833,7 +2508,10 @@ export default function App() {
       <Problem />
       <HowItWorks />
       <LiveDemo />
+      <BeforeAfter />
+      <JargonDetector />
       <Impact />
+      <AudiencePoll />
       <TechStack />
       <Conference />
       <Footer />
