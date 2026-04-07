@@ -1931,11 +1931,14 @@ function JargonDetector() {
   const [scanning, setScanning] = useState(false);
   const [results, setResults] = useState<Array<{ word: string; suggestion: string; col: number }>>([]);
   const [scanned, setScanned] = useState(false);
+  const [view, setView] = useState<"demo" | "actions">("demo");
+  const [expandedStep, setExpandedStep] = useState<number | null>(4);
 
   const scan = useCallback(async () => {
     setScanning(true);
     setResults([]);
     setScanned(false);
+    setView("demo");
     await new Promise(r => setTimeout(r, 900));
     const found: Array<{ word: string; suggestion: string; col: number }> = [];
     const lower = text.toLowerCase();
@@ -1957,6 +1960,67 @@ function JargonDetector() {
         '<mark class="bg-red-500/25 text-red-300 rounded px-0.5 border border-red-500/30">$1</mark>')
     : text;
 
+  const hasJargon = results.length > 0;
+
+  // GitHub Actions steps — step 4 (Vale) status depends on scan result
+  const actionSteps = [
+    { name: "Set up job",            cmd: "actions/runner",                           dur: "0s",   status: "done" },
+    { name: "Checkout code",         cmd: "actions/checkout@v4",                     dur: "0.8s", status: "done" },
+    { name: "Set up Python 3.x",     cmd: "actions/setup-python@v5",                 dur: "1.2s", status: "done" },
+    { name: "Install dependencies",  cmd: "pip install mkdocs-material google-genai", dur: "3.4s", status: "done" },
+    {
+      name: "Vale Jargon Check",
+      cmd: "vale --config .vale.ini docs/",
+      dur: hasJargon ? "1.1s" : "0.9s",
+      status: scanned ? (hasJargon ? "fail" : "done") : "queued",
+      logs: scanned && hasJargon
+        ? [
+            "  Linting docs/your-snippet.md...",
+            ...results.map(r => `  docs/your-snippet.md:1:${r.col}  error  '${r.word}' → '${r.suggestion}'  Jargon.jargon`),
+            `  ✖ ${results.length} error${results.length > 1 ? "s" : ""} — exit status 1`,
+          ]
+        : scanned
+        ? ["  Linting docs/...", "  ✔ 0 errors — exit status 0"]
+        : [],
+    },
+    {
+      name: "AI Mentor Audit",
+      cmd: "python ai_mentor.py --table",
+      dur: hasJargon ? "2.1s" : "skipped",
+      status: scanned ? (hasJargon ? "done" : "skip") : "queued",
+      logs: scanned && hasJargon
+        ? [
+            "  → Connecting to Gemini 2.5 Flash API...",
+            `  → Sending ${results.length} flagged passage${results.length > 1 ? "s" : ""} (${results.length * 85} tokens)`,
+            "  → Received rewrite suggestions",
+            "  → Posting sticky comment to PR...",
+            "  ✓ Comment posted successfully",
+          ]
+        : ["  Skipped — Vale found no issues"],
+    },
+    {
+      name: "Deploy to GitHub Pages",
+      cmd: "mkdocs gh-deploy --force",
+      dur: scanned && !hasJargon ? "2.3s" : "skipped",
+      status: scanned ? (!hasJargon ? "done" : "skip") : "queued",
+      logs: scanned && !hasJargon
+        ? ["  INFO  -  Documentation built in 2.1s", "  INFO  -  Deploying to GitHub Pages...", "  ✔ Docs live at saisravan909.github.io/Invisible-Mentors/"]
+        : ["  Skipped — jargon issues must be resolved first"],
+    },
+  ];
+
+  type StepStatus = "done" | "fail" | "skip" | "queued" | "running";
+
+  const StatusIcon = ({ status }: { status: StepStatus }) => {
+    if (status === "done") return <Check className="w-4 h-4 text-green-400" />;
+    if (status === "fail") return <X className="w-4 h-4 text-red-400" />;
+    if (status === "skip") return <span className="text-slate-600 text-xs font-mono">⊘</span>;
+    if (status === "running") return <motion.div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full" animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }} />;
+    return <div className="w-3 h-3 rounded-full bg-slate-700 border border-slate-600" />;
+  };
+
+  const overallStatus = !scanned ? "not-run" : hasJargon ? "fail" : "pass";
+
   return (
     <section ref={ref} className="py-24 relative" id="try-it">
       <div className="max-w-5xl mx-auto px-6">
@@ -1969,7 +2033,7 @@ function JargonDetector() {
             Is <span className="gradient-text">Your Writing</span> Clean?
           </h2>
           <p className="text-lg text-slate-400 max-w-xl mx-auto">
-            Paste any documentation snippet below. Watch the exact same Vale rules that run in the CI pipeline scan it in real time.
+            Type any sentence. Scan it. Then toggle to see what the <span className="text-teal-300 font-semibold">actual GitHub Actions run</span> would look like — with your exact words.
           </p>
         </motion.div>
 
@@ -1977,12 +2041,23 @@ function JargonDetector() {
           className="rounded-2xl border border-teal-500/15 overflow-hidden shadow-2xl"
           style={{ background: "linear-gradient(160deg,rgba(10,14,26,0.95),rgba(5,10,20,0.98))" }}>
 
+          {/* Title bar */}
           <div className="flex items-center gap-3 px-5 py-3 border-b border-white/5">
-            <div className="flex gap-1.5"><div className="w-3 h-3 rounded-full bg-red-500/60" /><div className="w-3 h-3 rounded-full bg-amber-400/60" /><div className="w-3 h-3 rounded-full bg-green-500/60" /></div>
-            <span className="text-slate-600 text-xs font-mono">vale --config .vale.ini ‹your-text›</span>
+            <div className="flex gap-1.5">
+              <div className="w-3 h-3 rounded-full bg-red-500/60" />
+              <div className="w-3 h-3 rounded-full bg-amber-400/60" />
+              <div className="w-3 h-3 rounded-full bg-green-500/60" />
+            </div>
+            <span className="text-slate-600 text-xs font-mono flex-1">vale --config .vale.ini ‹your-text›</span>
+            {scanned && (
+              <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${hasJargon ? "text-red-400 border-red-500/30 bg-red-500/10" : "text-green-400 border-green-500/30 bg-green-500/10"}`}>
+                {hasJargon ? `✖ ${results.length} issue${results.length > 1 ? "s" : ""}` : "✔ clean"}
+              </span>
+            )}
           </div>
 
-          <div className="grid md:grid-cols-2">
+          {/* Input + scan area */}
+          <div className="grid md:grid-cols-2 border-b border-white/5">
             {/* Input */}
             <div className="p-5 border-r border-white/5">
               <div className="text-[10px] text-teal-400 font-mono uppercase tracking-widest mb-2">Your text ↓</div>
@@ -1997,22 +2072,22 @@ function JargonDetector() {
                 style={{ background: scanning ? "rgba(20,184,166,0.15)" : "rgba(20,184,166,0.2)", border: "1px solid rgba(20,184,166,0.3)", color: "#2dd4bf" }}>
                 {scanning
                   ? <><motion.div className="w-4 h-4 border-2 border-teal-400 border-t-transparent rounded-full" animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }} />Scanning...</>
-                  : <><Wand2 className="w-4 h-4" />Scan for Jargon</>
-                }
+                  : <><Wand2 className="w-4 h-4" />Scan for Jargon</>}
               </button>
             </div>
 
-            {/* Results */}
+            {/* Quick results panel */}
             <div className="p-5">
               <div className="text-[10px] text-slate-500 font-mono uppercase tracking-widest mb-2">Vale output ↓</div>
               {!scanned && !scanning && (
-                <div className="h-36 flex items-center justify-center text-slate-700 text-sm font-mono">
-                  Click "Scan" to run Vale →
+                <div className="h-36 flex flex-col items-center justify-center gap-2 text-slate-700">
+                  <Wand2 className="w-6 h-6 opacity-30" />
+                  <span className="text-sm font-mono">Click "Scan for Jargon" →</span>
                 </div>
               )}
               {scanning && (
-                <div className="h-36 flex flex-col gap-1 overflow-hidden">
-                  {["Parsing rules from .vale.ini…", "Loading Jargon.yml…", "Scanning document…", "Checking passive voice…", "Checking jargon list…"].map((l, i) => (
+                <div className="h-36 flex flex-col gap-1.5 overflow-hidden justify-center px-2">
+                  {["Parsing rules from .vale.ini…", "Loading Jargon.yml style guide…", "Scanning document…", "Checking passive voice…", "Checking jargon list…"].map((l, i) => (
                     <motion.div key={l} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.14 }}
                       className="text-[11px] font-mono text-slate-500">{l}</motion.div>
                   ))}
@@ -2026,14 +2101,17 @@ function JargonDetector() {
                 </motion.div>
               )}
               {scanned && results.length > 0 && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-1.5 max-h-48 overflow-y-auto">
-                  <div className="text-[11px] font-mono text-red-400 mb-2">✖ {results.length} error{results.length > 1 ? "s" : ""} found (exit 1)</div>
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-1.5 max-h-40 overflow-y-auto">
+                  <div className="text-[11px] font-mono text-red-400 mb-1.5">✖ {results.length} error{results.length > 1 ? "s" : ""} found (exit 1)</div>
                   {results.map((r, i) => (
                     <motion.div key={i} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.1 }}
                       className="flex items-start gap-2 bg-red-500/8 rounded-lg px-3 py-2 border border-red-500/15">
                       <AlertCircle className="w-3 h-3 text-red-400 mt-0.5 shrink-0" />
                       <div>
-                        <div className="text-[11px] font-mono text-red-300"><span className="text-slate-500">col {r.col}</span> · <span className="font-bold">"{r.word}"</span> → <span className="text-green-400">"{r.suggestion}"</span></div>
+                        <div className="text-[11px] font-mono text-red-300">
+                          <span className="text-slate-500">col {r.col}</span> · <span className="font-bold">"{r.word}"</span>
+                          <span className="text-slate-600"> → </span><span className="text-green-400">"{r.suggestion}"</span>
+                        </div>
                         <div className="text-[10px] text-slate-600">Jargon.jargon</div>
                       </div>
                     </motion.div>
@@ -2043,39 +2121,183 @@ function JargonDetector() {
             </div>
           </div>
 
-          {scanned && results.length > 0 && (
-            <div className="border-t border-white/5 p-5">
-              <div className="text-[10px] text-purple-400 font-mono uppercase tracking-widest mb-2">Highlighted text ↓</div>
-              <div className="bg-slate-900/60 rounded-xl border border-purple-500/15 p-4 text-sm text-slate-300 leading-relaxed"
-                dangerouslySetInnerHTML={{ __html: highlighted }} />
-              <div className="mt-3 flex items-center gap-2 text-[11px] text-slate-600">
-                <Bot className="w-3 h-3 text-purple-400" />
-                <span className="text-slate-500">In the real pipeline, Gemini 2.5 Flash would now generate a full rewrite suggestion and post it as a PR comment.</span>
+          {/* ── VIEW TOGGLE — appears after scan ── */}
+          {scanned && (
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+              {/* Toggle bar */}
+              <div className="flex items-center justify-between px-5 py-3 border-b border-white/5 bg-slate-900/30">
+                <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-900/60 border border-slate-700/40">
+                  <button
+                    onClick={() => setView("demo")}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${view === "demo" ? "bg-teal-500/20 text-teal-300 border border-teal-500/30" : "text-slate-500 hover:text-slate-300"}`}
+                  >
+                    <Terminal className="w-3.5 h-3.5" />
+                    Demo Tool
+                  </button>
+                  <button
+                    onClick={() => { setView("actions"); setExpandedStep(hasJargon ? 4 : 4); }}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${view === "actions" ? "bg-purple-500/20 text-purple-300 border border-purple-500/30" : "text-slate-500 hover:text-slate-300"}`}
+                  >
+                    <Github className="w-3.5 h-3.5" />
+                    GitHub Actions
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-500/20 border border-purple-500/30 text-purple-400 font-mono">LIVE</span>
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  {view === "actions" && (
+                    <a href="https://github.com/saisravan909/Invisible-Mentors/actions" target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-purple-400 transition-colors">
+                      <ExternalLink className="w-3 h-3" /> View live runs
+                    </a>
+                  )}
+                  <div className={`flex items-center gap-1.5 text-xs font-mono px-2 py-1 rounded-full border ${overallStatus === "pass" ? "text-green-400 border-green-500/30 bg-green-500/8" : overallStatus === "fail" ? "text-red-400 border-red-500/30 bg-red-500/8" : "text-slate-500 border-slate-700"}`}>
+                    {overallStatus === "pass" ? "✔ Pipeline passed" : overallStatus === "fail" ? "✖ Pipeline failed" : "○ Not run"}
+                  </div>
+                </div>
               </div>
-            </div>
-          )}
 
-          {/* Try it on your repo */}
-          <div className="border-t border-white/5 p-5 bg-slate-900/20">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
-                <Code2 className="w-3.5 h-3.5 text-green-400" />
-                Add to <span className="text-green-300">.github/workflows/mentor.yml</span> — takes under 5 minutes
-              </div>
-              <button onClick={() => navigator.clipboard.writeText(`- name: Vale Jargon Check\n  uses: errata-ai/vale-action@reviewdog\n  with:\n    files: docs/\n    filter_mode: nofilter\n    reporter: github-pr-review`)}
-                className="flex items-center gap-1 text-[10px] text-slate-500 hover:text-green-400 transition-colors">
-                <Copy className="w-3 h-3" /> Copy
-              </button>
-            </div>
-            <div className="bg-[#0d1117] rounded-xl border border-slate-700/30 p-4 font-mono text-[11px] leading-relaxed">
-              <div className="text-slate-600">      - name: <span className="text-green-300">Vale Jargon Check</span></div>
-              <div className="text-slate-600">        uses: <span className="text-blue-300">errata-ai/vale-action@reviewdog</span></div>
-              <div className="text-slate-600">        with:</div>
-              <div className="text-slate-600">          files: <span className="text-amber-300">docs/</span></div>
-              <div className="text-slate-600">          filter_mode: <span className="text-teal-300">nofilter</span></div>
-              <div className="text-slate-600">          reporter: <span className="text-purple-300">github-pr-review</span></div>
-            </div>
-          </div>
+              <AnimatePresence mode="wait">
+                {view === "demo" && (
+                  <motion.div key="demo" initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -8 }} transition={{ duration: 0.2 }}>
+                    {results.length > 0 && (
+                      <div className="p-5 border-b border-white/5">
+                        <div className="text-[10px] text-purple-400 font-mono uppercase tracking-widest mb-2">Highlighted text ↓</div>
+                        <div className="bg-slate-900/60 rounded-xl border border-purple-500/15 p-4 text-sm text-slate-300 leading-relaxed"
+                          dangerouslySetInnerHTML={{ __html: highlighted }} />
+                        <div className="mt-3 flex items-center gap-2 text-[11px]">
+                          <Bot className="w-3 h-3 text-purple-400" />
+                          <span className="text-slate-500">In the real pipeline, Gemini 2.5 Flash generates a full rewrite and posts it as a structured PR comment.</span>
+                          <button onClick={() => setView("actions")} className="ml-auto text-purple-400 hover:text-purple-300 text-[11px] flex items-center gap-1 shrink-0 transition-colors">
+                            See it in GitHub Actions <ChevronRight className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    <div className="p-5 bg-slate-900/20">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
+                          <Code2 className="w-3.5 h-3.5 text-green-400" />
+                          Add to <span className="text-green-300">.github/workflows/mentor.yml</span>
+                        </div>
+                        <button onClick={() => navigator.clipboard.writeText(`- name: Vale Jargon Check\n  uses: errata-ai/vale-action@reviewdog\n  with:\n    files: docs/\n    filter_mode: nofilter\n    reporter: github-pr-review`)}
+                          className="flex items-center gap-1 text-[10px] text-slate-500 hover:text-green-400 transition-colors">
+                          <Copy className="w-3 h-3" /> Copy
+                        </button>
+                      </div>
+                      <div className="bg-[#0d1117] rounded-xl border border-slate-700/30 p-4 font-mono text-[11px] leading-relaxed">
+                        <div className="text-slate-600">      - name: <span className="text-green-300">Vale Jargon Check</span></div>
+                        <div className="text-slate-600">        uses: <span className="text-blue-300">errata-ai/vale-action@reviewdog</span></div>
+                        <div className="text-slate-600">        with:</div>
+                        <div className="text-slate-600">          files: <span className="text-amber-300">docs/</span></div>
+                        <div className="text-slate-600">          filter_mode: <span className="text-teal-300">nofilter</span></div>
+                        <div className="text-slate-600">          reporter: <span className="text-purple-300">github-pr-review</span></div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+
+                {view === "actions" && (
+                  <motion.div key="actions" initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 8 }} transition={{ duration: 0.2 }}>
+                    {/* GitHub-style Actions header */}
+                    <div className="px-5 py-4 border-b border-slate-800/60 bg-[#0d1117]/60">
+                      <div className="flex items-center gap-3">
+                        <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${hasJargon ? "bg-red-500/20 text-red-400 border border-red-500/30" : "bg-green-500/20 text-green-400 border border-green-500/30"}`}>
+                          {hasJargon ? <><X className="w-3 h-3" /> Failure</> : <><Check className="w-3 h-3" /> Success</>}
+                        </div>
+                        <div>
+                          <div className="text-slate-200 text-sm font-semibold">Invisible Mentors · Lint, Mentor & Deploy</div>
+                          <div className="text-slate-600 text-xs font-mono">Triggered by push to <span className="text-blue-400">main</span> · via your text input</div>
+                        </div>
+                        <a href="https://github.com/saisravan909/Invisible-Mentors/actions" target="_blank" rel="noopener noreferrer"
+                          className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-500/15 border border-purple-500/25 text-purple-300 text-xs font-semibold hover:bg-purple-500/25 transition-colors">
+                          <ExternalLink className="w-3 h-3" /> View in GitHub
+                        </a>
+                      </div>
+                    </div>
+
+                    {/* Steps list */}
+                    <div className="divide-y divide-slate-800/40">
+                      {actionSteps.map((step, i) => {
+                        const isExpanded = expandedStep === i;
+                        const s = step.status as StepStatus;
+                        return (
+                          <div key={step.name}>
+                            <button
+                              onClick={() => setExpandedStep(isExpanded ? null : i)}
+                              className={`w-full flex items-center gap-4 px-5 py-3 text-left transition-colors hover:bg-slate-800/20 ${isExpanded ? "bg-slate-800/20" : ""}`}
+                            >
+                              <StatusIcon status={s} />
+                              <div className="flex-1 min-w-0">
+                                <span className={`text-sm font-semibold ${s === "fail" ? "text-red-300" : s === "done" ? "text-slate-200" : s === "skip" ? "text-slate-600" : "text-slate-500"}`}>
+                                  {step.name}
+                                </span>
+                                {s === "fail" && i === 4 && (
+                                  <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 font-mono">jargon detected</span>
+                                )}
+                                {s === "skip" && (
+                                  <span className="ml-2 text-[10px] text-slate-600 font-mono">skipped</span>
+                                )}
+                              </div>
+                              <span className={`text-xs font-mono shrink-0 ${s === "done" ? "text-green-500/60" : s === "fail" ? "text-red-500/60" : "text-slate-700"}`}>
+                                {s !== "queued" ? step.dur : ""}
+                              </span>
+                              {(step as { logs?: string[] }).logs && (step as { logs?: string[] }).logs!.length > 0 && (
+                                <ChevronDown className={`w-3.5 h-3.5 text-slate-600 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                              )}
+                            </button>
+
+                            <AnimatePresence>
+                              {isExpanded && (step as { logs?: string[] }).logs && (
+                                <motion.div
+                                  initial={{ height: 0, opacity: 0 }}
+                                  animate={{ height: "auto", opacity: 1 }}
+                                  exit={{ height: 0, opacity: 0 }}
+                                  transition={{ duration: 0.2 }}
+                                  className="overflow-hidden"
+                                >
+                                  <div className="mx-5 mb-3 bg-[#0d1117] rounded-xl border border-slate-700/30 p-4 font-mono text-[11px] leading-relaxed space-y-0.5">
+                                    {(step as { logs?: string[] }).logs!.map((line, li) => (
+                                      <motion.div
+                                        key={li}
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        transition={{ delay: li * 0.06 }}
+                                        className={
+                                          line.includes("✖") || line.includes("error") ? "text-red-400" :
+                                          line.includes("✔") || line.includes("✓") ? "text-green-400" :
+                                          line.includes("→") ? "text-blue-300" :
+                                          "text-slate-500"
+                                        }
+                                      >
+                                        {line}
+                                      </motion.div>
+                                    ))}
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Footer links */}
+                    <div className="flex flex-wrap items-center gap-4 px-5 py-4 bg-[#0d1117]/40 border-t border-slate-800/60">
+                      <a href="https://github.com/saisravan909/Invisible-Mentors/actions" target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-purple-400 transition-colors font-medium">
+                        <Github className="w-3.5 h-3.5" /> Browse all live runs →
+                      </a>
+                      <a href="https://github.com/saisravan909/Invisible-Mentors/blob/main/.github/workflows/main.yml" target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-green-400 transition-colors font-medium">
+                        <Code2 className="w-3.5 h-3.5" /> Full workflow YAML →
+                      </a>
+                      <span className="text-slate-700 text-[10px] font-mono ml-auto">saisravan909/Invisible-Mentors · github.com</span>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          )}
         </motion.div>
       </div>
     </section>
