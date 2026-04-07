@@ -1934,40 +1934,61 @@ function JargonDetector() {
   const [view, setView] = useState<"demo" | "actions">("demo");
   const [expandedStep, setExpandedStep] = useState<number | null>(4);
 
-  // Live GitHub Actions data
-  type RealRun = { id: number; display_title: string; status: string; conclusion: string | null; html_url: string; created_at: string; run_number: number; actor: { login: string } };
-  type RealStep = { name: string; status: string; conclusion: string | null; number: number; started_at: string | null; completed_at: string | null };
-  const [realRun, setRealRun] = useState<RealRun | null>(null);
-  const [realSteps, setRealSteps] = useState<RealStep[]>([]);
-  const [realLoading, setRealLoading] = useState(false);
-  const [realExpandedStep, setRealExpandedStep] = useState<number | null>(null);
+  // Live CI trigger state
+  type CIRun = { id: number; html_url: string; run_number: number; status: string; conclusion: string | null; created_at: string };
+  type CIStep = { name: string; status: string; conclusion: string | null; number: number; started_at: string | null; completed_at: string | null };
+  const [ciStatus, setCiStatus] = useState<"idle" | "triggering" | "polling" | "done" | "error">("idle");
+  const [ciSha, setCiSha] = useState<string | null>(null);
+  const [ciRun, setCiRun] = useState<CIRun | null>(null);
+  const [ciSteps, setCiSteps] = useState<CIStep[]>([]);
+  const [ciCommitUrl, setCiCommitUrl] = useState<string | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  useEffect(() => {
-    if (view !== "actions") return;
-    if (realRun) return; // already fetched
-    setRealLoading(true);
-    fetch("https://api.github.com/repos/saisravan909/Invisible-Mentors/actions/runs?per_page=10")
-      .then(r => r.json())
-      .then(async (d) => {
-        const run: RealRun | undefined = d.workflow_runs?.find((r: RealRun) =>
-          (r.display_title || "").toLowerCase().match(/lint|mentor|deploy|docs/)
-        ) ?? d.workflow_runs?.[0];
+  // Cleanup poll on unmount
+  useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
+
+  const startPolling = useCallback((sha: string) => {
+    let attempts = 0;
+    pollRef.current = setInterval(async () => {
+      attempts++;
+      if (attempts > 40) { clearInterval(pollRef.current!); setCiStatus("done"); return; }
+      try {
+        const resp = await fetch(
+          `https://api.github.com/repos/saisravan909/Invisible-Mentors/actions/runs?head_sha=${sha}&per_page=5`,
+          { headers: { "User-Agent": "im-demo" } }
+        );
+        const data = await resp.json();
+        const run: CIRun | undefined = data.workflow_runs?.[0];
         if (!run) return;
-        setRealRun(run);
-        const jobsResp = await fetch(`https://api.github.com/repos/saisravan909/Invisible-Mentors/actions/runs/${run.id}/jobs`);
+        setCiRun(run);
+        // Fetch live steps
+        const jobsResp = await fetch(
+          `https://api.github.com/repos/saisravan909/Invisible-Mentors/actions/runs/${run.id}/jobs`
+        );
         const jobsData = await jobsResp.json();
-        const steps: RealStep[] = jobsData?.jobs?.[0]?.steps ?? [];
-        setRealSteps(steps);
-      })
-      .catch(() => {})
-      .finally(() => setRealLoading(false));
-  }, [view]);
+        const steps: CIStep[] = jobsData?.jobs?.[0]?.steps ?? [];
+        setCiSteps(steps);
+        if (run.status === "completed") {
+          clearInterval(pollRef.current!);
+          setCiStatus("done");
+        }
+      } catch {}
+    }, 3000);
+  }, []);
 
   const scan = useCallback(async () => {
     setScanning(true);
     setResults([]);
     setScanned(false);
     setView("demo");
+    // Reset CI state for new scan
+    if (pollRef.current) clearInterval(pollRef.current);
+    setCiStatus("triggering");
+    setCiSha(null);
+    setCiRun(null);
+    setCiSteps([]);
+    setCiCommitUrl(null);
+
     await new Promise(r => setTimeout(r, 900));
     const found: Array<{ word: string; suggestion: string; col: number }> = [];
     const lower = text.toLowerCase();
@@ -1982,7 +2003,27 @@ function JargonDetector() {
     setResults(found);
     setScanned(true);
     setScanning(false);
-  }, [text]);
+
+    // Fire & forget: commit to GitHub to trigger real CI
+    try {
+      const resp = await fetch("/api/trigger", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      const data = await resp.json();
+      if (data.commitSha) {
+        setCiSha(data.commitSha);
+        setCiCommitUrl(data.commitUrl ?? null);
+        setCiStatus("polling");
+        startPolling(data.commitSha);
+      } else {
+        setCiStatus("error");
+      }
+    } catch {
+      setCiStatus("error");
+    }
+  }, [text, startPolling]);
 
   const highlighted = results.length > 0
     ? text.replace(new RegExp(`\\b(${results.map(r => r.word).join("|")})\\b`, "gi"),
@@ -2228,122 +2269,165 @@ function JargonDetector() {
                 {view === "actions" && (
                   <motion.div key="actions" initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 8 }} transition={{ duration: 0.2 }}>
 
-                    {/* ── Proof banner — fetched from real GitHub API ── */}
-                    <div className={`flex items-center gap-3 px-5 py-2.5 border-b text-xs font-mono flex-wrap
-                      ${realLoading ? "border-slate-800/40 bg-slate-900/30" :
-                        realRun ? "border-purple-500/15 bg-purple-500/6" :
-                        "border-slate-800/40 bg-slate-900/20"}`}>
-                      {realLoading && (
+                    {/* ── Live CI Status Banner ── */}
+                    <div className={`flex items-center gap-2.5 px-5 py-3 border-b text-xs font-mono flex-wrap
+                      ${ciStatus === "error" ? "border-slate-700/40 bg-slate-900/30" :
+                        ciStatus === "done" ? (ciRun?.conclusion === "success" ? "border-green-500/15 bg-green-500/5" : "border-red-500/15 bg-red-500/5") :
+                        "border-purple-500/15 bg-purple-500/6"}`}>
+                      {ciStatus === "triggering" && (
                         <>
-                          <motion.div className="w-3 h-3 border-2 border-purple-400 border-t-transparent rounded-full" animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }} />
-                          <span className="text-slate-500">Fetching real run data…</span>
+                          <motion.div className="w-3 h-3 border-2 border-purple-400 border-t-transparent rounded-full shrink-0" animate={{ rotate: 360 }} transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }} />
+                          <span className="text-purple-300 font-semibold">Pushing your text to GitHub…</span>
+                          <span className="text-slate-600">committing docs/demo-snippet.md → triggers CI</span>
                         </>
                       )}
-                      {!realLoading && realRun && (
+                      {ciStatus === "polling" && !ciRun && (
                         <>
-                          <motion.div className="w-2 h-2 rounded-full bg-purple-400 shrink-0" animate={{ scale: [1, 1.4, 1] }} transition={{ duration: 1.5, repeat: Infinity }} />
-                          <span className="text-slate-500">Real pipeline run:</span>
-                          <span className={`font-semibold ${realRun.conclusion === "success" ? "text-green-400" : realRun.conclusion === "failure" ? "text-red-400" : "text-amber-400"}`}>
-                            {realRun.conclusion === "success" ? "✔ passed" : realRun.conclusion === "failure" ? "✖ failed" : "● running"}
+                          <motion.div className="w-3 h-3 border-2 border-amber-400 border-t-transparent rounded-full shrink-0" animate={{ rotate: 360 }} transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }} />
+                          <span className="text-amber-300 font-semibold">Commit pushed — waiting for runner to pick up…</span>
+                          {ciCommitUrl && <a href={ciCommitUrl} target="_blank" rel="noopener noreferrer" className="ml-auto text-purple-400 hover:text-purple-300 flex items-center gap-1"><ExternalLink className="w-3 h-3" />view commit</a>}
+                        </>
+                      )}
+                      {ciStatus === "polling" && ciRun && (
+                        <>
+                          <motion.div className="w-2.5 h-2.5 rounded-full bg-amber-400 shrink-0" animate={{ scale: [1, 1.4, 1] }} transition={{ duration: 1, repeat: Infinity }} />
+                          <span className="text-amber-300 font-semibold">Run #{ciRun.run_number} in progress…</span>
+                          <span className="text-slate-600">real pipeline running your text now</span>
+                          <a href={ciRun.html_url} target="_blank" rel="noopener noreferrer" className="ml-auto text-purple-400 hover:text-purple-300 flex items-center gap-1 shrink-0"><ExternalLink className="w-3 h-3" />watch live on GitHub</a>
+                        </>
+                      )}
+                      {ciStatus === "done" && ciRun && (
+                        <>
+                          <span className={`font-semibold ${ciRun.conclusion === "success" ? "text-green-400" : "text-red-400"}`}>
+                            {ciRun.conclusion === "success" ? "✔ Run passed" : "✖ Run failed"} · #{ciRun.run_number}
                           </span>
                           <span className="text-slate-600">·</span>
-                          <span className="text-slate-400 truncate max-w-48">{realRun.display_title}</span>
-                          <span className="text-slate-600">·</span>
-                          <span className="text-slate-600">run #{realRun.run_number}</span>
-                          <a href={realRun.html_url} target="_blank" rel="noopener noreferrer"
-                            className="ml-auto flex items-center gap-1 text-purple-400 hover:text-purple-300 transition-colors shrink-0">
-                            <ExternalLink className="w-3 h-3" /> view on GitHub
-                          </a>
+                          <span className="text-slate-500">real CI completed on your text</span>
+                          <a href={ciRun.html_url} target="_blank" rel="noopener noreferrer" className="ml-auto text-purple-400 hover:text-purple-300 flex items-center gap-1 shrink-0"><ExternalLink className="w-3 h-3" />open run on GitHub</a>
                         </>
                       )}
-                      {!realLoading && !realRun && (
+                      {ciStatus === "error" && (
                         <>
-                          <Github className="w-3 h-3 text-slate-600" />
-                          <a href="https://github.com/saisravan909/Invisible-Mentors/actions" target="_blank" rel="noopener noreferrer"
-                            className="text-slate-500 hover:text-purple-400 transition-colors">
-                            View real runs on GitHub →
-                          </a>
+                          <Github className="w-3 h-3 text-slate-600 shrink-0" />
+                          <span className="text-slate-500">CI trigger unavailable in this environment</span>
+                          <a href="https://github.com/saisravan909/Invisible-Mentors/actions" target="_blank" rel="noopener noreferrer" className="ml-auto text-purple-400 hover:text-purple-300 flex items-center gap-1 shrink-0"><ExternalLink className="w-3 h-3" />view all runs →</a>
                         </>
+                      )}
+                      {ciStatus === "idle" && (
+                        <span className="text-slate-600">Scan your text first to trigger the live pipeline</span>
                       )}
                     </div>
 
-                    {/* ── GitHub Actions header (your text scan) ── */}
+                    {/* ── Run header ── */}
                     <div className="px-5 py-4 border-b border-slate-800/60 bg-[#0d1117]/60">
                       <div className="flex items-center gap-3">
-                        <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${hasJargon ? "bg-red-500/20 text-red-400 border border-red-500/30" : "bg-green-500/20 text-green-400 border border-green-500/30"}`}>
-                          {hasJargon ? <><X className="w-3 h-3" /> Failure</> : <><Check className="w-3 h-3" /> Success</>}
+                        <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
+                          ciStatus === "done" && ciRun
+                            ? ciRun.conclusion === "success" ? "bg-green-500/20 text-green-400 border border-green-500/30" : "bg-red-500/20 text-red-400 border border-red-500/30"
+                            : ciStatus === "polling" ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                            : hasJargon ? "bg-red-500/20 text-red-400 border border-red-500/30" : "bg-green-500/20 text-green-400 border border-green-500/30"
+                        }`}>
+                          {ciStatus === "polling"
+                            ? <><motion.div className="w-2.5 h-2.5 border-2 border-amber-400 border-t-transparent rounded-full" animate={{ rotate: 360 }} transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }} /> Running</>
+                            : ciStatus === "done" && ciRun
+                              ? ciRun.conclusion === "success" ? <><Check className="w-3 h-3" /> Success</> : <><X className="w-3 h-3" /> Failure</>
+                              : hasJargon ? <><X className="w-3 h-3" /> Failure</> : <><Check className="w-3 h-3" /> Success</>
+                          }
                         </div>
                         <div>
                           <div className="text-slate-200 text-sm font-semibold">Invisible Mentors · Lint, Mentor & Deploy</div>
                           <div className="text-slate-500 text-xs font-mono">
-                            Triggered by push to <span className="text-blue-400">main</span>
-                            <span className="text-slate-600"> · scanning: "</span>
-                            <span className="text-teal-400/80">{text.slice(0, 40)}{text.length > 40 ? "…" : ""}</span>
-                            <span className="text-slate-600">"</span>
+                            {ciRun
+                              ? <>Run #{ciRun.run_number} · triggered by this demo scan</>
+                              : <>Triggered by push to <span className="text-blue-400">main</span> · via demo scan</>
+                            }
                           </div>
                         </div>
-                        <a href="https://github.com/saisravan909/Invisible-Mentors/actions" target="_blank" rel="noopener noreferrer"
+                        <a href={ciRun?.html_url ?? "https://github.com/saisravan909/Invisible-Mentors/actions"} target="_blank" rel="noopener noreferrer"
                           className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-500/15 border border-purple-500/25 text-purple-300 text-xs font-semibold hover:bg-purple-500/25 transition-colors">
-                          <ExternalLink className="w-3 h-3" /> View in GitHub
+                          <ExternalLink className="w-3 h-3" /> {ciRun ? "Open this run" : "View in GitHub"}
                         </a>
                       </div>
                     </div>
 
-                    {/* ── Steps — driven by scan results ── */}
+                    {/* ── Steps — real if available, simulation fallback ── */}
                     <div className="divide-y divide-slate-800/40">
-                      {actionSteps.map((step, i) => {
-                        const isExpanded = expandedStep === i;
-                        const s = step.status as StepStatus;
-                        return (
-                          <div key={step.name}>
-                            <button
-                              onClick={() => setExpandedStep(isExpanded ? null : i)}
-                              className={`w-full flex items-center gap-4 px-5 py-3 text-left transition-colors hover:bg-slate-800/20 ${isExpanded ? "bg-slate-800/20" : ""}`}
-                            >
-                              <StatusIcon status={s} />
-                              <div className="flex-1 min-w-0">
-                                <span className={`text-sm font-semibold ${s === "fail" ? "text-red-300" : s === "done" ? "text-slate-200" : s === "skip" ? "text-slate-600" : "text-slate-500"}`}>
-                                  {step.name}
-                                </span>
-                                {s === "fail" && i === 4 && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 font-mono">jargon detected</span>}
-                                {s === "skip" && <span className="ml-2 text-[10px] text-slate-600 font-mono">skipped</span>}
+                      {ciStatus === "done" && ciSteps.length > 0
+                        ? ciSteps.map((step) => {
+                            const s: StepStatus = step.conclusion === "success" ? "done" : step.conclusion === "failure" ? "fail" : step.conclusion === "skipped" ? "skip" : step.status === "in_progress" ? "running" : "queued";
+                            const dur = step.started_at && step.completed_at
+                              ? `${((new Date(step.completed_at).getTime() - new Date(step.started_at).getTime()) / 1000).toFixed(1)}s` : "";
+                            return (
+                              <div key={step.number} className="flex items-center gap-4 px-5 py-3">
+                                <StatusIcon status={s} />
+                                <span className={`text-sm font-semibold flex-1 ${s === "fail" ? "text-red-300" : s === "done" ? "text-slate-200" : s === "skip" ? "text-slate-600" : "text-slate-500"}`}>{step.name}</span>
+                                {s === "fail" && <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 font-mono">failed</span>}
+                                {s === "skip" && <span className="text-[10px] text-slate-600 font-mono">skipped</span>}
+                                <span className={`text-xs font-mono shrink-0 ${s === "done" ? "text-green-500/60" : s === "fail" ? "text-red-500/60" : "text-slate-700"}`}>{dur}</span>
                               </div>
-                              <span className={`text-xs font-mono shrink-0 ${s === "done" ? "text-green-500/60" : s === "fail" ? "text-red-500/60" : "text-slate-700"}`}>
-                                {s !== "queued" ? step.dur : ""}
-                              </span>
-                              {(step as { logs?: string[] }).logs && (step as { logs?: string[] }).logs!.length > 0 && (
-                                <ChevronDown className={`w-3.5 h-3.5 text-slate-600 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
-                              )}
-                            </button>
-                            <AnimatePresence>
-                              {isExpanded && (step as { logs?: string[] }).logs && (
-                                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
-                                  <div className="mx-5 mb-3 bg-[#0d1117] rounded-xl border border-slate-700/30 p-4 font-mono text-[11px] leading-relaxed space-y-0.5">
-                                    {(step as { logs?: string[] }).logs!.map((line, li) => (
-                                      <motion.div key={li} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: li * 0.06 }}
-                                        className={line.includes("✖") || line.includes("error") ? "text-red-400" : line.includes("✔") || line.includes("✓") ? "text-green-400" : line.includes("→") ? "text-blue-300" : "text-slate-500"}>
-                                        {line}
-                                      </motion.div>
-                                    ))}
+                            );
+                          })
+                        : actionSteps.map((step, i) => {
+                            const isExpanded = expandedStep === i;
+                            const s = step.status as StepStatus;
+                            const isRunning = (ciStatus === "polling") && ciSteps.length > 0
+                              ? ciSteps.some(cs => cs.status === "in_progress" && cs.name.toLowerCase().includes(step.name.toLowerCase().split(" ")[0]))
+                              : false;
+                            const realStep = ciSteps.find(cs => cs.name.toLowerCase().includes(step.name.toLowerCase().split(" ")[0]));
+                            const effectiveStatus: StepStatus = realStep
+                              ? realStep.conclusion === "success" ? "done" : realStep.conclusion === "failure" ? "fail" : realStep.conclusion === "skipped" ? "skip" : realStep.status === "in_progress" ? "running" : "queued"
+                              : isRunning ? "running" : s;
+                            return (
+                              <div key={step.name}>
+                                <button onClick={() => setExpandedStep(isExpanded ? null : i)}
+                                  className={`w-full flex items-center gap-4 px-5 py-3 text-left transition-colors hover:bg-slate-800/20 ${isExpanded ? "bg-slate-800/20" : ""}`}>
+                                  <StatusIcon status={effectiveStatus} />
+                                  <div className="flex-1 min-w-0">
+                                    <span className={`text-sm font-semibold ${effectiveStatus === "fail" ? "text-red-300" : effectiveStatus === "done" ? "text-slate-200" : effectiveStatus === "skip" ? "text-slate-600" : effectiveStatus === "running" ? "text-amber-300" : "text-slate-500"}`}>
+                                      {step.name}
+                                    </span>
+                                    {effectiveStatus === "fail" && i === 4 && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 font-mono">jargon detected</span>}
+                                    {effectiveStatus === "skip" && <span className="ml-2 text-[10px] text-slate-600 font-mono">skipped</span>}
+                                    {effectiveStatus === "running" && <span className="ml-2 text-[10px] text-amber-400/70 font-mono">running…</span>}
                                   </div>
-                                </motion.div>
-                              )}
-                            </AnimatePresence>
-                          </div>
-                        );
-                      })}
+                                  <span className={`text-xs font-mono shrink-0 ${effectiveStatus === "done" ? "text-green-500/60" : effectiveStatus === "fail" ? "text-red-500/60" : "text-slate-700"}`}>
+                                    {effectiveStatus !== "queued" ? step.dur : ""}
+                                  </span>
+                                  {(step as { logs?: string[] }).logs && (step as { logs?: string[] }).logs!.length > 0 && (
+                                    <ChevronDown className={`w-3.5 h-3.5 text-slate-600 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                                  )}
+                                </button>
+                                <AnimatePresence>
+                                  {isExpanded && (step as { logs?: string[] }).logs && (
+                                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
+                                      <div className="mx-5 mb-3 bg-[#0d1117] rounded-xl border border-slate-700/30 p-4 font-mono text-[11px] leading-relaxed space-y-0.5">
+                                        {(step as { logs?: string[] }).logs!.map((line, li) => (
+                                          <motion.div key={li} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: li * 0.06 }}
+                                            className={line.includes("✖") || line.includes("error") ? "text-red-400" : line.includes("✔") || line.includes("✓") ? "text-green-400" : line.includes("→") ? "text-blue-300" : "text-slate-500"}>
+                                            {line}
+                                          </motion.div>
+                                        ))}
+                                      </div>
+                                    </motion.div>
+                                  )}
+                                </AnimatePresence>
+                              </div>
+                            );
+                          })
+                      }
                     </div>
 
                     {/* Footer */}
                     <div className="flex flex-wrap items-center gap-4 px-5 py-3.5 bg-[#0d1117]/40 border-t border-slate-800/60">
                       <a href="https://github.com/saisravan909/Invisible-Mentors/actions" target="_blank" rel="noopener noreferrer"
                         className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-purple-400 transition-colors font-medium">
-                        <Github className="w-3.5 h-3.5" /> Browse all live runs →
+                        <Github className="w-3.5 h-3.5" /> All live runs on GitHub →
                       </a>
                       <a href="https://github.com/saisravan909/Invisible-Mentors/blob/main/.github/workflows/main.yml" target="_blank" rel="noopener noreferrer"
                         className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-green-400 transition-colors font-medium">
                         <Code2 className="w-3.5 h-3.5" /> Full workflow YAML →
                       </a>
+                      {ciSha && <span className="text-[10px] font-mono text-slate-700 ml-auto">{ciSha.slice(0, 7)}</span>}
                     </div>
                   </motion.div>
                 )}
