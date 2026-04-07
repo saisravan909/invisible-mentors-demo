@@ -1934,6 +1934,35 @@ function JargonDetector() {
   const [view, setView] = useState<"demo" | "actions">("demo");
   const [expandedStep, setExpandedStep] = useState<number | null>(4);
 
+  // Live GitHub Actions data
+  type RealRun = { id: number; display_title: string; status: string; conclusion: string | null; html_url: string; created_at: string; run_number: number; actor: { login: string } };
+  type RealStep = { name: string; status: string; conclusion: string | null; number: number; started_at: string | null; completed_at: string | null };
+  const [realRun, setRealRun] = useState<RealRun | null>(null);
+  const [realSteps, setRealSteps] = useState<RealStep[]>([]);
+  const [realLoading, setRealLoading] = useState(false);
+  const [realExpandedStep, setRealExpandedStep] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (view !== "actions") return;
+    if (realRun) return; // already fetched
+    setRealLoading(true);
+    fetch("https://api.github.com/repos/saisravan909/Invisible-Mentors/actions/runs?per_page=10")
+      .then(r => r.json())
+      .then(async (d) => {
+        const run: RealRun | undefined = d.workflow_runs?.find((r: RealRun) =>
+          (r.display_title || "").toLowerCase().match(/lint|mentor|deploy|docs/)
+        ) ?? d.workflow_runs?.[0];
+        if (!run) return;
+        setRealRun(run);
+        const jobsResp = await fetch(`https://api.github.com/repos/saisravan909/Invisible-Mentors/actions/runs/${run.id}/jobs`);
+        const jobsData = await jobsResp.json();
+        const steps: RealStep[] = jobsData?.jobs?.[0]?.steps ?? [];
+        setRealSteps(steps);
+      })
+      .catch(() => {})
+      .finally(() => setRealLoading(false));
+  }, [view]);
+
   const scan = useCallback(async () => {
     setScanning(true);
     setResults([]);
@@ -2198,100 +2227,133 @@ function JargonDetector() {
 
                 {view === "actions" && (
                   <motion.div key="actions" initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 8 }} transition={{ duration: 0.2 }}>
-                    {/* GitHub-style Actions header */}
-                    <div className="px-5 py-4 border-b border-slate-800/60 bg-[#0d1117]/60">
-                      <div className="flex items-center gap-3">
-                        <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${hasJargon ? "bg-red-500/20 text-red-400 border border-red-500/30" : "bg-green-500/20 text-green-400 border border-green-500/30"}`}>
-                          {hasJargon ? <><X className="w-3 h-3" /> Failure</> : <><Check className="w-3 h-3" /> Success</>}
-                        </div>
-                        <div>
-                          <div className="text-slate-200 text-sm font-semibold">Invisible Mentors · Lint, Mentor & Deploy</div>
-                          <div className="text-slate-600 text-xs font-mono">Triggered by push to <span className="text-blue-400">main</span> · via your text input</div>
-                        </div>
+
+                    {/* ── PART 1: REAL LIVE RUN FROM GITHUB API ── */}
+                    <div className="border-b border-purple-500/15">
+                      <div className="flex items-center gap-2 px-5 py-2.5 bg-purple-500/8">
+                        <motion.div className="w-2 h-2 rounded-full bg-purple-400" animate={{ scale: [1, 1.3, 1] }} transition={{ duration: 1.2, repeat: Infinity }} />
+                        <span className="text-purple-300 text-xs font-bold uppercase tracking-widest">Real Run — Live from GitHub</span>
                         <a href="https://github.com/saisravan909/Invisible-Mentors/actions" target="_blank" rel="noopener noreferrer"
-                          className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-500/15 border border-purple-500/25 text-purple-300 text-xs font-semibold hover:bg-purple-500/25 transition-colors">
-                          <ExternalLink className="w-3 h-3" /> View in GitHub
+                          className="ml-auto flex items-center gap-1 text-[10px] text-purple-400/70 hover:text-purple-300 transition-colors">
+                          <ExternalLink className="w-3 h-3" /> github.com/saisravan909/Invisible-Mentors/actions
                         </a>
+                      </div>
+
+                      {realLoading && (
+                        <div className="flex items-center gap-3 px-5 py-6">
+                          <motion.div className="w-5 h-5 border-2 border-purple-400 border-t-transparent rounded-full" animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }} />
+                          <span className="text-slate-500 text-sm">Fetching latest run from GitHub API…</span>
+                        </div>
+                      )}
+
+                      {!realLoading && realRun && (
+                        <>
+                          <div className="px-5 py-3 bg-[#0d1117]/50 border-b border-slate-800/40 flex items-center gap-3 flex-wrap">
+                            <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-semibold shrink-0 ${realRun.conclusion === "success" ? "bg-green-500/20 text-green-400 border border-green-500/30" : realRun.conclusion === "failure" ? "bg-red-500/20 text-red-400 border border-red-500/30" : "bg-amber-500/20 text-amber-400 border border-amber-500/30"}`}>
+                              {realRun.conclusion === "success" ? <><Check className="w-3 h-3" /> Success</> : realRun.conclusion === "failure" ? <><X className="w-3 h-3" /> Failure</> : <><motion.div className="w-2.5 h-2.5 border-2 border-amber-400 border-t-transparent rounded-full" animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }} /> Running</>}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-slate-200 text-sm font-semibold truncate">{realRun.display_title}</div>
+                              <div className="text-slate-600 text-xs font-mono">
+                                Run #{realRun.run_number} · by {realRun.actor?.login} · {new Date(realRun.created_at).toLocaleString()}
+                              </div>
+                            </div>
+                            <a href={realRun.html_url} target="_blank" rel="noopener noreferrer"
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-500/15 border border-purple-500/25 text-purple-300 text-xs font-semibold hover:bg-purple-500/25 transition-colors shrink-0">
+                              <ExternalLink className="w-3 h-3" /> Open this run
+                            </a>
+                          </div>
+
+                          {realSteps.length > 0 && (
+                            <div className="divide-y divide-slate-800/30">
+                              {realSteps.map((step) => {
+                                const s: StepStatus = step.conclusion === "success" ? "done" : step.conclusion === "failure" ? "fail" : step.conclusion === "skipped" ? "skip" : step.status === "in_progress" ? "running" : "queued";
+                                const dur = step.started_at && step.completed_at
+                                  ? `${((new Date(step.completed_at).getTime() - new Date(step.started_at).getTime()) / 1000).toFixed(1)}s`
+                                  : "";
+                                const isExp = realExpandedStep === step.number;
+                                return (
+                                  <button key={step.number} onClick={() => setRealExpandedStep(isExp ? null : step.number)}
+                                    className={`w-full flex items-center gap-4 px-5 py-2.5 text-left transition-colors hover:bg-slate-800/15 ${isExp ? "bg-slate-800/15" : ""}`}>
+                                    <StatusIcon status={s} />
+                                    <span className={`text-sm flex-1 text-left ${s === "fail" ? "text-red-300" : s === "done" ? "text-slate-300" : s === "skip" ? "text-slate-600" : "text-slate-500"}`}>{step.name}</span>
+                                    <span className={`text-xs font-mono shrink-0 ${s === "done" ? "text-green-500/50" : s === "fail" ? "text-red-500/50" : "text-slate-700"}`}>{dur}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </>
+                      )}
+
+                      {!realLoading && !realRun && (
+                        <div className="px-5 py-4 text-slate-600 text-sm font-mono">Could not fetch live data — <a href="https://github.com/saisravan909/Invisible-Mentors/actions" target="_blank" rel="noopener noreferrer" className="text-purple-400 underline">view on GitHub directly</a></div>
+                      )}
+                    </div>
+
+                    {/* ── PART 2: YOUR TEXT SIMULATION ── */}
+                    <div>
+                      <div className="flex items-center gap-2 px-5 py-2.5 bg-teal-500/6 border-b border-teal-500/10">
+                        <Wand2 className="w-3 h-3 text-teal-400" />
+                        <span className="text-teal-300 text-xs font-bold uppercase tracking-widest">Your Text — What CI Would Produce</span>
+                        <span className="ml-2 text-slate-600 text-[10px] font-mono truncate max-w-64">"{text.slice(0, 55)}{text.length > 55 ? "…" : ""}"</span>
+                      </div>
+
+                      <div className="divide-y divide-slate-800/40">
+                        {actionSteps.map((step, i) => {
+                          const isExpanded = expandedStep === i;
+                          const s = step.status as StepStatus;
+                          return (
+                            <div key={step.name}>
+                              <button
+                                onClick={() => setExpandedStep(isExpanded ? null : i)}
+                                className={`w-full flex items-center gap-4 px-5 py-3 text-left transition-colors hover:bg-slate-800/20 ${isExpanded ? "bg-slate-800/20" : ""}`}
+                              >
+                                <StatusIcon status={s} />
+                                <div className="flex-1 min-w-0">
+                                  <span className={`text-sm font-semibold ${s === "fail" ? "text-red-300" : s === "done" ? "text-slate-200" : s === "skip" ? "text-slate-600" : "text-slate-500"}`}>
+                                    {step.name}
+                                  </span>
+                                  {s === "fail" && i === 4 && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 font-mono">jargon detected</span>}
+                                  {s === "skip" && <span className="ml-2 text-[10px] text-slate-600 font-mono">skipped</span>}
+                                </div>
+                                <span className={`text-xs font-mono shrink-0 ${s === "done" ? "text-green-500/60" : s === "fail" ? "text-red-500/60" : "text-slate-700"}`}>
+                                  {s !== "queued" ? step.dur : ""}
+                                </span>
+                                {(step as { logs?: string[] }).logs && (step as { logs?: string[] }).logs!.length > 0 && (
+                                  <ChevronDown className={`w-3.5 h-3.5 text-slate-600 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                                )}
+                              </button>
+                              <AnimatePresence>
+                                {isExpanded && (step as { logs?: string[] }).logs && (
+                                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
+                                    <div className="mx-5 mb-3 bg-[#0d1117] rounded-xl border border-slate-700/30 p-4 font-mono text-[11px] leading-relaxed space-y-0.5">
+                                      {(step as { logs?: string[] }).logs!.map((line, li) => (
+                                        <motion.div key={li} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: li * 0.06 }}
+                                          className={line.includes("✖") || line.includes("error") ? "text-red-400" : line.includes("✔") || line.includes("✓") ? "text-green-400" : line.includes("→") ? "text-blue-300" : "text-slate-500"}>
+                                          {line}
+                                        </motion.div>
+                                      ))}
+                                    </div>
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
 
-                    {/* Steps list */}
-                    <div className="divide-y divide-slate-800/40">
-                      {actionSteps.map((step, i) => {
-                        const isExpanded = expandedStep === i;
-                        const s = step.status as StepStatus;
-                        return (
-                          <div key={step.name}>
-                            <button
-                              onClick={() => setExpandedStep(isExpanded ? null : i)}
-                              className={`w-full flex items-center gap-4 px-5 py-3 text-left transition-colors hover:bg-slate-800/20 ${isExpanded ? "bg-slate-800/20" : ""}`}
-                            >
-                              <StatusIcon status={s} />
-                              <div className="flex-1 min-w-0">
-                                <span className={`text-sm font-semibold ${s === "fail" ? "text-red-300" : s === "done" ? "text-slate-200" : s === "skip" ? "text-slate-600" : "text-slate-500"}`}>
-                                  {step.name}
-                                </span>
-                                {s === "fail" && i === 4 && (
-                                  <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 font-mono">jargon detected</span>
-                                )}
-                                {s === "skip" && (
-                                  <span className="ml-2 text-[10px] text-slate-600 font-mono">skipped</span>
-                                )}
-                              </div>
-                              <span className={`text-xs font-mono shrink-0 ${s === "done" ? "text-green-500/60" : s === "fail" ? "text-red-500/60" : "text-slate-700"}`}>
-                                {s !== "queued" ? step.dur : ""}
-                              </span>
-                              {(step as { logs?: string[] }).logs && (step as { logs?: string[] }).logs!.length > 0 && (
-                                <ChevronDown className={`w-3.5 h-3.5 text-slate-600 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
-                              )}
-                            </button>
-
-                            <AnimatePresence>
-                              {isExpanded && (step as { logs?: string[] }).logs && (
-                                <motion.div
-                                  initial={{ height: 0, opacity: 0 }}
-                                  animate={{ height: "auto", opacity: 1 }}
-                                  exit={{ height: 0, opacity: 0 }}
-                                  transition={{ duration: 0.2 }}
-                                  className="overflow-hidden"
-                                >
-                                  <div className="mx-5 mb-3 bg-[#0d1117] rounded-xl border border-slate-700/30 p-4 font-mono text-[11px] leading-relaxed space-y-0.5">
-                                    {(step as { logs?: string[] }).logs!.map((line, li) => (
-                                      <motion.div
-                                        key={li}
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        transition={{ delay: li * 0.06 }}
-                                        className={
-                                          line.includes("✖") || line.includes("error") ? "text-red-400" :
-                                          line.includes("✔") || line.includes("✓") ? "text-green-400" :
-                                          line.includes("→") ? "text-blue-300" :
-                                          "text-slate-500"
-                                        }
-                                      >
-                                        {line}
-                                      </motion.div>
-                                    ))}
-                                  </div>
-                                </motion.div>
-                              )}
-                            </AnimatePresence>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {/* Footer links */}
-                    <div className="flex flex-wrap items-center gap-4 px-5 py-4 bg-[#0d1117]/40 border-t border-slate-800/60">
+                    {/* Footer */}
+                    <div className="flex flex-wrap items-center gap-4 px-5 py-3.5 bg-[#0d1117]/40 border-t border-slate-800/60">
                       <a href="https://github.com/saisravan909/Invisible-Mentors/actions" target="_blank" rel="noopener noreferrer"
                         className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-purple-400 transition-colors font-medium">
-                        <Github className="w-3.5 h-3.5" /> Browse all live runs →
+                        <Github className="w-3.5 h-3.5" /> All {43}+ live runs on GitHub →
                       </a>
                       <a href="https://github.com/saisravan909/Invisible-Mentors/blob/main/.github/workflows/main.yml" target="_blank" rel="noopener noreferrer"
                         className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-green-400 transition-colors font-medium">
                         <Code2 className="w-3.5 h-3.5" /> Full workflow YAML →
                       </a>
-                      <span className="text-slate-700 text-[10px] font-mono ml-auto">saisravan909/Invisible-Mentors · github.com</span>
                     </div>
                   </motion.div>
                 )}
