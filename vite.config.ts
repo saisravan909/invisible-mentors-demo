@@ -38,7 +38,7 @@ async function triggerCI(text: string) {
       body: JSON.stringify({
         message: "demo: live jargon scan from conference demo",
         content,
-        committer: { name: "Invisible Mentors Demo", email: "demo@im.dev" },
+        committer: { name: "Sai Sravan Cherukuri", email: "saisravan@gmail.com" },
         ...(sha ? { sha } : {}),
       }),
     }
