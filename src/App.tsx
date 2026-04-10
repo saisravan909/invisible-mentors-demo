@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence, useInView } from "framer-motion";
 import confetti from "canvas-confetti";
+import { QRCodeSVG } from "qrcode.react";
 import {
   Github, ExternalLink, ChevronDown, Check, X,
   Zap, Shield, GitPullRequest, Bot, Rocket, Globe,
@@ -8,58 +9,429 @@ import {
   ArrowRight, Play, RotateCcw, AlertCircle, Sparkles,
   DollarSign, Calculator, BookOpen, BarChart3, Award, Building2, Infinity,
   ThumbsUp, ThumbsDown, Star, MessageSquare, Trophy, Timer,
-  Heart, Mic, Link, Mail, Copy, ChevronRight, Wand2, ScanText, PartyPopper
+  Heart, Mic, Link, Mail, Copy, ChevronRight, Wand2, ScanText, PartyPopper,
+  Maximize2, Minimize2, Gauge, SmilePlus
 } from "lucide-react";
 
 type DemoState = "idle" | "scanning" | "flagged" | "analyzing" | "complete";
 
+// ─────────────────────────────────────────────
+// 1. TYPEWRITER HOOK
+// ─────────────────────────────────────────────
+function useTypewriter(text: string, speed = 14, trigger = false) {
+  const [displayed, setDisplayed] = useState("");
+  useEffect(() => {
+    if (!trigger) { setDisplayed(""); return; }
+    setDisplayed("");
+    let i = 0;
+    const id = setInterval(() => {
+      i++;
+      setDisplayed(text.slice(0, i));
+      if (i >= text.length) clearInterval(id);
+    }, speed);
+    return () => clearInterval(id);
+  }, [text, trigger, speed]);
+  return displayed;
+}
+
+// ─────────────────────────────────────────────
+// 2. INTERACTIVE PARTICLE CANVAS
+// ─────────────────────────────────────────────
+function ParticleCanvas() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    let mouse = { x: -9999, y: -9999 };
+    let animId: number;
+    const resize = () => { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; };
+    resize();
+    window.addEventListener("resize", resize);
+    const N = 70;
+    const particles = Array.from({ length: N }, () => ({
+      x: Math.random() * (canvas.width || 1200),
+      y: Math.random() * (canvas.height || 800),
+      vx: (Math.random() - 0.5) * 0.35,
+      vy: (Math.random() - 0.5) * 0.35,
+      r: Math.random() * 1.6 + 0.5,
+      alpha: Math.random() * 0.5 + 0.08,
+    }));
+    const handleMouse = (e: MouseEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      mouse = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    };
+    window.addEventListener("mousemove", handleMouse);
+    const draw = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      particles.forEach((p, i) => {
+        const dx = mouse.x - p.x, dy = mouse.y - p.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < 180) { p.vx += dx * 0.00007; p.vy += dy * 0.00007; }
+        p.vx *= 0.992; p.vy *= 0.992;
+        p.x += p.vx; p.y += p.vy;
+        if (p.x < 0) p.x = canvas.width; if (p.x > canvas.width) p.x = 0;
+        if (p.y < 0) p.y = canvas.height; if (p.y > canvas.height) p.y = 0;
+        particles.slice(i + 1).forEach(q => {
+          const d = Math.hypot(p.x - q.x, p.y - q.y);
+          if (d < 130) {
+            ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y);
+            ctx.strokeStyle = `rgba(59,130,246,${0.07 * (1 - d / 130)})`; ctx.lineWidth = 0.6; ctx.stroke();
+          }
+        });
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(99,155,255,${p.alpha})`; ctx.fill();
+      });
+      animId = requestAnimationFrame(draw);
+    };
+    draw();
+    return () => { cancelAnimationFrame(animId); window.removeEventListener("resize", resize); window.removeEventListener("mousemove", handleMouse); };
+  }, []);
+  return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" style={{ opacity: 0.55 }} />;
+}
+
+// ─────────────────────────────────────────────
+// 3. PRESENTER / STAGE MODE
+// ─────────────────────────────────────────────
+const STAGE_SECTIONS = ["#how-it-works", "#live-demo", "#try-it", "#impact", "#audience-poll", "#conference"];
+
+function usePresenterMode() {
+  const [active, setActive] = useState(false);
+  const idx = useRef(0);
+  const toggle = useCallback(() => {
+    if (!active) {
+      document.documentElement.requestFullscreen?.().catch(() => {});
+      setActive(true);
+    } else {
+      document.exitFullscreen?.().catch(() => {});
+      setActive(false);
+      idx.current = 0;
+    }
+  }, [active]);
+  useEffect(() => {
+    if (!active) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.key === "ArrowRight" || e.key === "ArrowDown" || e.key === " ") {
+        e.preventDefault();
+        idx.current = Math.min(idx.current + 1, STAGE_SECTIONS.length - 1);
+        document.querySelector(STAGE_SECTIONS[idx.current])?.scrollIntoView({ behavior: "smooth" });
+      }
+      if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+        e.preventDefault();
+        idx.current = Math.max(idx.current - 1, 0);
+        document.querySelector(STAGE_SECTIONS[idx.current])?.scrollIntoView({ behavior: "smooth" });
+      }
+      if (e.key === "Escape") setActive(false);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [active]);
+  useEffect(() => {
+    const handler = () => { if (!document.fullscreenElement) setActive(false); };
+    document.addEventListener("fullscreenchange", handler);
+    return () => document.removeEventListener("fullscreenchange", handler);
+  }, []);
+  return { active, toggle };
+}
+
+// ─────────────────────────────────────────────
+// 4. REAL-TIME JARGON METER
+// ─────────────────────────────────────────────
+const JARGON_METER_WORDS = [
+  "utilize","leverage","paradigm","paradigms","synergize","facilitate","implement",
+  "robust","seamless","cutting-edge","game-changer","revolutionary","best practices",
+  "going forward","at the end of the day","circle back","touch base","deep dive","actionable",
+  "streamline","bandwidth","holistic","synergy","pivot","disruptive","ecosystem","drill down",
+  "empower","scalable","proactive","optimize","ideate","deliverable","stakeholder","value-add",
+];
+function JargonMeter({ text }: { text: string }) {
+  const words = text.toLowerCase().replace(/['']/g, "").split(/\W+/).filter(Boolean);
+  const total = words.length;
+  const hits = words.filter(w => JARGON_METER_WORDS.includes(w)).length;
+  const raw = total > 0 ? (hits / total) * 220 : 0;
+  const score = Math.min(100, Math.round(raw));
+  const label = score === 0 ? "Crystal Clear" : score < 15 ? "Mostly Clean" : score < 40 ? "Getting Jargon-y" : score < 70 ? "Heavy Jargon" : "Jargon Overload";
+  const color = score === 0 ? "#22c55e" : score < 15 ? "#86efac" : score < 40 ? "#f59e0b" : score < 70 ? "#f97316" : "#ef4444";
+  const emoji = score === 0 ? "✅" : score < 15 ? "🟡" : score < 40 ? "⚠️" : score < 70 ? "🔴" : "💀";
+  return (
+    <div className="mt-3 rounded-xl border border-slate-700/40 bg-slate-900/50 p-3">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-1.5">
+          <Gauge className="w-3.5 h-3.5 text-slate-500" />
+          <span className="text-[11px] text-slate-500 font-mono uppercase tracking-widest">Live Jargon Score</span>
+        </div>
+        <span className="text-xs font-black font-mono" style={{ color }}>{emoji} {label}</span>
+      </div>
+      <div className="relative h-2.5 bg-slate-800 rounded-full overflow-hidden">
+        <motion.div
+          className="h-full rounded-full"
+          animate={{ width: `${score}%` }}
+          style={{ background: `linear-gradient(90deg, #22c55e, ${color})` }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+        />
+        {[25, 50, 75].map(mark => (
+          <div key={mark} className="absolute top-0 bottom-0 w-px bg-slate-700/60" style={{ left: `${mark}%` }} />
+        ))}
+      </div>
+      <div className="flex justify-between mt-1">
+        <span className="text-[10px] text-slate-600 font-mono">{hits} jargon / {total} words</span>
+        <span className="text-[10px] font-mono font-bold" style={{ color }}>{score}/100</span>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// 5. SPEED THEATER — 22 hrs vs 25 sec
+// ─────────────────────────────────────────────
+function SpeedTheater() {
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true, margin: "-80px" });
+  const [started, setStarted] = useState(false);
+  const [manualSecs, setManualSecs] = useState(0);
+  const [imSecs, setImSecs] = useState(0);
+  const [imDone, setImDone] = useState(false);
+
+  useEffect(() => { if (inView && !started) setStarted(true); }, [inView, started]);
+
+  useEffect(() => {
+    if (!started) return;
+    const manual = setInterval(() => setManualSecs(s => Math.min(s + 90, 79200)), 80);
+    return () => clearInterval(manual);
+  }, [started]);
+
+  useEffect(() => {
+    if (!started) return;
+    const im = setInterval(() => setImSecs(s => {
+      if (s >= 25) { clearInterval(im); setImDone(true); return 25; }
+      return s + 1;
+    }), 1000);
+    return () => clearInterval(im);
+  }, [started]);
+
+  const fmtManual = (s: number) => {
+    const h = Math.floor(s / 3600).toString().padStart(2, "0");
+    const m = Math.floor((s % 3600) / 60).toString().padStart(2, "0");
+    const sec = (s % 60).toString().padStart(2, "0");
+    return `${h}:${m}:${sec}`;
+  };
+
+  const reset = () => { setStarted(false); setManualSecs(0); setImSecs(0); setImDone(false); setTimeout(() => setStarted(true), 50); };
+
+  return (
+    <section ref={ref} className="py-20 relative overflow-hidden">
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute inset-y-0 left-0 w-1/2 bg-red-950/10" />
+        <div className="absolute inset-y-0 right-0 w-1/2 bg-green-950/10" />
+      </div>
+      <div className="max-w-5xl mx-auto px-6 relative">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={inView ? { opacity: 1, y: 0 } : {}} className="text-center mb-10">
+          <h2 className="text-3xl sm:text-4xl font-black text-slate-100 mb-3">
+            The Same PR. <span className="gradient-text">Two Very Different Waits.</span>
+          </h2>
+          <p className="text-slate-400 max-w-xl mx-auto">Watch how long contributors wait for feedback — without you, and with Invisible Mentors running.</p>
+        </motion.div>
+
+        <div className="grid md:grid-cols-2 gap-4">
+          {/* Manual — slow painful clock */}
+          <motion.div initial={{ opacity: 0, x: -30 }} animate={inView ? { opacity: 1, x: 0 } : {}} transition={{ delay: 0.1 }}
+            className="rounded-2xl border border-red-500/25 overflow-hidden"
+            style={{ background: "linear-gradient(160deg,rgba(20,5,5,0.9),rgba(10,3,3,0.95))" }}>
+            <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-red-500/15 bg-red-950/20">
+              <X className="w-4 h-4 text-red-400" />
+              <span className="text-red-300 font-bold text-sm">Without Invisible Mentors</span>
+              <span className="ml-auto text-[10px] font-mono text-red-600 px-2 py-0.5 rounded-full border border-red-500/20 bg-red-500/8">manual review</span>
+            </div>
+            <div className="p-6 flex flex-col items-center gap-4">
+              <div className="flex flex-col items-center gap-1">
+                <span className="text-[11px] text-slate-600 font-mono uppercase tracking-widest">Time waiting for feedback</span>
+                <div className="text-5xl sm:text-6xl font-black text-red-400 font-mono tabular-nums tracking-tight">
+                  {fmtManual(manualSecs)}
+                </div>
+                <span className="text-[11px] text-slate-600 font-mono">ticking up…</span>
+              </div>
+              <div className="w-full rounded-xl bg-red-950/30 border border-red-500/15 p-4 text-sm text-slate-400 leading-relaxed font-mono">
+                <div className="text-xs text-slate-600 mb-2">PR #47 — docs/onboarding.md</div>
+                <div className="flex items-center gap-2 text-xs text-slate-600">
+                  <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                  <span>Waiting for maintainer review…</span>
+                </div>
+                <div className="mt-3 text-[11px] text-slate-700 space-y-1">
+                  <div>No automated check</div>
+                  <div>No feedback posted</div>
+                  <div>Contributor: staring at screen</div>
+                </div>
+              </div>
+              <div className="w-full text-center py-2 px-4 rounded-xl bg-red-500/8 border border-red-500/15">
+                <span className="text-red-400 text-sm font-semibold">GitHub Octoverse 2023: avg 22 hours</span>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* IM — blazing fast */}
+          <motion.div initial={{ opacity: 0, x: 30 }} animate={inView ? { opacity: 1, x: 0 } : {}} transition={{ delay: 0.15 }}
+            className="rounded-2xl border border-green-500/25 overflow-hidden"
+            style={{ background: "linear-gradient(160deg,rgba(3,15,6,0.9),rgba(2,10,5,0.95))" }}>
+            <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-green-500/15 bg-green-950/20">
+              <Check className="w-4 h-4 text-green-400" />
+              <span className="text-green-300 font-bold text-sm">With Invisible Mentors</span>
+              <span className="ml-auto text-[10px] font-mono text-green-600 px-2 py-0.5 rounded-full border border-green-500/20 bg-green-500/8">automated</span>
+            </div>
+            <div className="p-6 flex flex-col items-center gap-4">
+              <div className="flex flex-col items-center gap-1">
+                <span className="text-[11px] text-slate-600 font-mono uppercase tracking-widest">Time to expert feedback</span>
+                <div className={`text-5xl sm:text-6xl font-black font-mono tabular-nums tracking-tight transition-colors duration-500 ${imDone ? "text-green-400" : "text-teal-300"}`}>
+                  {imDone ? "25s ✓" : `00:00:${String(imSecs).padStart(2, "0")}`}
+                </div>
+                <span className="text-[11px] text-slate-600 font-mono">{imDone ? "done." : "pipeline running…"}</span>
+              </div>
+              <AnimatePresence>
+                {imDone && (
+                  <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+                    className="w-full rounded-xl bg-green-950/30 border border-green-500/20 p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-[10px] font-bold text-white">IM</div>
+                      <span className="text-green-300 text-xs font-semibold">invisible-mentors[bot]</span>
+                      <span className="text-slate-600 text-xs ml-auto">just now</span>
+                    </div>
+                    <p className="text-slate-300 text-xs leading-relaxed">Found <span className="text-red-400 font-semibold">2 jargon phrases</span>. Suggested rewrites posted. Maintainer was never paged. ✓</p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              {!imDone && (
+                <div className="w-full rounded-xl bg-green-950/20 border border-green-500/10 p-4">
+                  <div className="space-y-2">
+                    {["Vale scanning docs/…", "Gemini analyzing context…", "Posting PR comment…"].map((step, i) => (
+                      <div key={step} className="flex items-center gap-2">
+                        {imSecs > i * 8 ? <Check className="w-3 h-3 text-green-400 shrink-0" /> : <motion.div className="w-3 h-3 border border-teal-400 border-t-transparent rounded-full shrink-0" animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }} />}
+                        <span className={`text-xs font-mono ${imSecs > i * 8 ? "text-green-400" : "text-teal-400/50"}`}>{step}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="w-full text-center py-2 px-4 rounded-xl bg-green-500/8 border border-green-500/15">
+                <span className="text-green-400 text-sm font-semibold">Invisible Mentors: under 30 seconds</span>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+
+        <motion.div initial={{ opacity: 0 }} animate={inView ? { opacity: 1 } : {}} transition={{ delay: 0.5 }}
+          className="flex items-center justify-center gap-4 mt-6 flex-wrap">
+          <div className="text-center">
+            <span className="text-xs text-slate-500">Speed improvement</span>
+            <div className="text-2xl font-black text-amber-400">3,168×</div>
+            <span className="text-[10px] text-slate-600">22 hrs → 25 sec</span>
+          </div>
+          <div className="w-px h-10 bg-slate-800 hidden sm:block" />
+          <div className="text-center">
+            <span className="text-xs text-slate-500">Human reviews needed</span>
+            <div className="text-2xl font-black text-green-400">0</div>
+            <span className="text-[10px] text-slate-600">fully automated</span>
+          </div>
+          <div className="w-px h-10 bg-slate-800 hidden sm:block" />
+          <div className="text-center">
+            <span className="text-xs text-slate-500">Cost to run</span>
+            <div className="text-2xl font-black text-blue-400">$0</div>
+            <span className="text-[10px] text-slate-600">GitHub free tier</span>
+          </div>
+          <button onClick={reset} className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-700 text-slate-400 text-xs font-semibold hover:border-slate-500 hover:text-slate-200 transition-all">
+            <RotateCcw className="w-3.5 h-3.5" /> Replay
+          </button>
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
 function Nav() {
   const [scrolled, setScrolled] = useState(false);
+  const { active: stageActive, toggle: toggleStage } = usePresenterMode();
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 40);
     window.addEventListener("scroll", fn);
     return () => window.removeEventListener("scroll", fn);
   }, []);
   return (
-    <motion.nav
-      initial={{ y: -80, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.6, ease: "easeOut" }}
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? "bg-navy-950/90 backdrop-blur-xl border-b border-blue-500/10 shadow-xl shadow-black/20" : ""}`}
-    >
-      <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center">
-          <img src="/logo.png" alt="Invisible Mentors" className="h-9 w-auto" />
-        </div>
-        <div className="hidden md:flex items-center gap-6">
-          {[
-            { label: "How It Works", href: "#how-it-works" },
-            { label: "Live Demo",    href: "#live-demo" },
-            { label: "Try It",       href: "#try-it" },
-            { label: "Impact",       href: "#impact" },
-            { label: "Poll",         href: "#audience-poll" },
-            { label: "Conference",   href: "#conference" },
-          ].map((item) => (
-            <a
-              key={item.label}
-              href={item.href}
-              className="text-slate-400 hover:text-slate-100 text-sm font-medium transition-colors duration-200"
+    <>
+      <motion.nav
+        initial={{ y: -80, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? "bg-navy-950/90 backdrop-blur-xl border-b border-blue-500/10 shadow-xl shadow-black/20" : ""}`}
+      >
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center">
+            <img src="/logo.png" alt="Invisible Mentors" className="h-9 w-auto" />
+          </div>
+          <div className="hidden md:flex items-center gap-6">
+            {[
+              { label: "How It Works", href: "#how-it-works" },
+              { label: "Live Demo",    href: "#live-demo" },
+              { label: "Try It",       href: "#try-it" },
+              { label: "Impact",       href: "#impact" },
+              { label: "Poll",         href: "#audience-poll" },
+              { label: "Conference",   href: "#conference" },
+            ].map((item) => (
+              <a
+                key={item.label}
+                href={item.href}
+                className="text-slate-400 hover:text-slate-100 text-sm font-medium transition-colors duration-200"
+              >
+                {item.label}
+              </a>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={toggleStage}
+              title={stageActive ? "Exit Stage Mode (Esc)" : "Enter Stage Mode — fullscreen + ← → keys"}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200 border ${
+                stageActive
+                  ? "bg-amber-500/20 border-amber-500/40 text-amber-300 hover:bg-amber-500/30"
+                  : "bg-slate-800/50 border-slate-700 text-slate-400 hover:border-amber-500/40 hover:text-amber-300"
+              }`}
             >
-              {item.label}
+              {stageActive ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+              <span className="hidden sm:inline">{stageActive ? "Exit Stage" : "Stage Mode"}</span>
+            </button>
+            <a
+              href="https://github.com/saisravan909/Invisible-Mentors"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600/20 border border-blue-500/30 text-blue-400 text-sm font-medium hover:bg-blue-600/30 hover:border-blue-500/50 transition-all duration-200"
+            >
+              <Github className="w-4 h-4" />
+              GitHub
             </a>
-          ))}
+          </div>
         </div>
-        <a
-          href="https://github.com/saisravan909/Invisible-Mentors"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600/20 border border-blue-500/30 text-blue-400 text-sm font-medium hover:bg-blue-600/30 hover:border-blue-500/50 transition-all duration-200"
-        >
-          <Github className="w-4 h-4" />
-          GitHub
-        </a>
-      </div>
-    </motion.nav>
+      </motion.nav>
+      {/* Stage Mode HUD */}
+      <AnimatePresence>
+        {stageActive && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-3 px-6 py-3 rounded-2xl backdrop-blur-xl border border-amber-500/20 shadow-2xl shadow-black/40"
+            style={{ background: "rgba(10,8,5,0.92)" }}
+          >
+            <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+            <span className="text-amber-300 text-xs font-bold uppercase tracking-widest">Stage Mode</span>
+            <span className="text-slate-500 text-xs">← → navigate sections</span>
+            <span className="text-slate-700 text-xs">·</span>
+            <span className="text-slate-500 text-xs">Esc to exit</span>
+            <button onClick={toggleStage} className="ml-2 text-slate-500 hover:text-amber-300 transition-colors">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 }
 
@@ -146,6 +518,7 @@ function Hero() {
 
   return (
     <section className="relative min-h-screen flex flex-col items-center justify-center grid-bg overflow-hidden pt-20">
+      <ParticleCanvas />
       <div className="radial-glow absolute inset-0 pointer-events-none" />
       <div className="absolute inset-0 noise-overlay pointer-events-none opacity-40" />
 
@@ -250,6 +623,31 @@ function Hero() {
         </motion.div>
 
         <GitHubLiveStats />
+
+        {/* QR Code — scan to try on your phone */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.9 }}
+          className="flex items-center justify-center mt-6"
+        >
+          <div className="flex items-center gap-4 px-5 py-4 rounded-2xl bg-slate-900/60 border border-slate-700/40 backdrop-blur-sm shadow-lg">
+            <div className="p-2 rounded-xl bg-white">
+              <QRCodeSVG
+                value="https://im.saisravancherukuri.com"
+                size={72}
+                bgColor="#ffffff"
+                fgColor="#0f172a"
+                level="M"
+              />
+            </div>
+            <div className="text-left">
+              <p className="text-slate-200 text-sm font-bold mb-0.5">Try it on your phone</p>
+              <p className="text-slate-500 text-xs font-mono">im.saisravancherukuri.com</p>
+              <p className="text-slate-600 text-[10px] mt-1">Scan the QR code → type any text → see jargon detected live</p>
+            </div>
+          </div>
+        </motion.div>
 
         {/* Mini pipeline visualization */}
         <motion.div
@@ -989,11 +1387,14 @@ function UnderTheHood({ state }: { state: DemoState }) {
   );
 }
 
+const MENTOR_COMMENT_BODY = `Found **3 jargon phrases** that reduce clarity for new contributors. Here is the suggested rewrite:\n\n\`\`\`\nWe encourage you to use our setup script to work with the latest approaches in open source collaboration.\n\`\`\`\n\n| Original | Suggested | Reason |\n|----------|-----------|--------|\n| utilize  | use       | "Use" is direct and clear. "Utilize" adds syllables with no meaning gain. |\n| leverage | work with | "Leverage" is business jargon. Beginners often don't know this metaphor. |\n| paradigms | approaches | Plain language — no prior domain knowledge required. |`;
+
 function LiveDemo() {
   const [state, setState] = useState<DemoState>("idle");
   const [scanProgress, setScanProgress] = useState(0);
   const [showHood, setShowHood] = useState(false);
   const ref = useRef(null);
+  const mentorTyped = useTypewriter(MENTOR_COMMENT_BODY, 9, state === "complete");
 
   const runDemo = async () => {
     setState("scanning");
@@ -1169,46 +1570,86 @@ function LiveDemo() {
               )}
             </AnimatePresence>
 
-            {/* Mentor result */}
+            {/* GitHub PR Comment Mockup — mentor result */}
             <AnimatePresence>
               {state === "complete" && (
                 <motion.div
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5 }}
-                  className="mb-6 rounded-xl bg-navy-900/60 border border-blue-500/20 overflow-hidden"
+                  className="mb-6 rounded-xl overflow-hidden border border-[#30363d]"
+                  style={{ background: "#0d1117", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}
                 >
-                  <div className="px-5 py-3 bg-blue-950/40 border-b border-blue-500/15 flex items-center gap-2">
-                    <Bot className="w-4 h-4 text-blue-400" />
-                    <span className="text-blue-400 text-sm font-semibold">Invisible Mentor — PR Comment</span>
-                    <span className="ml-auto text-xs text-slate-500 font-mono">Posted automatically · 0 human reviews</span>
-                  </div>
-                  <div className="p-5">
-                    <p className="text-slate-300 text-sm mb-4 leading-relaxed">
-                      Found <span className="text-red-400 font-semibold">3 jargon phrases</span> that reduce clarity for new contributors. Here is the suggested rewrite:
-                    </p>
-                    <div className="rounded-lg bg-navy-950/80 border border-green-500/20 p-4 font-mono text-sm text-green-300 mb-4">
-                      We encourage you to <span className="text-green-400 font-semibold">use</span> our setup script
-                      to <span className="text-green-400 font-semibold">use</span> the latest <span className="text-green-400 font-semibold">approaches</span> in open source collaboration.
+                  {/* GitHub-style PR comment header */}
+                  <div className="flex items-center gap-3 px-4 py-2.5 border-b border-[#30363d]" style={{ background: "#161b22" }}>
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-teal-500 flex items-center justify-center text-xs font-bold text-white shrink-0">IM</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[#58a6ff] text-sm font-semibold">invisible-mentors</span>
+                        <span className="text-[#8b949e] text-xs">[bot]</span>
+                        <span className="text-[#8b949e] text-xs">commented just now</span>
+                        <span className="ml-auto flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold border border-[#388bfd40] text-[#388bfd]" style={{ background: "#388bfd1a" }}>
+                          <Bot className="w-2.5 h-2.5" /> bot
+                        </span>
+                      </div>
                     </div>
-                    <table className="w-full text-xs border-collapse">
-                      <thead>
-                        <tr className="text-slate-500 font-mono">
-                          <th className="text-left pb-2 font-normal">Original</th>
-                          <th className="text-left pb-2 font-normal">Suggested</th>
-                          <th className="text-left pb-2 font-normal">Reason</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {MENTOR_FEEDBACK.map((f) => (
-                          <tr key={f.original} className="border-t border-slate-800">
-                            <td className="py-2 pr-4 text-red-400 font-mono">{f.original}</td>
-                            <td className="py-2 pr-4 text-green-400 font-mono">{f.suggested}</td>
-                            <td className="py-2 text-slate-400 leading-snug">{f.reason}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-[10px] font-mono text-[#3fb950] px-2 py-0.5 rounded-full border border-[#3fb95040]" style={{ background: "#3fb9501a" }}>
+                        ✓ Posted automatically
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Comment body — typewriter */}
+                  <div className="px-4 py-4 text-sm text-[#c9d1d9] leading-relaxed min-h-[120px]">
+                    <div className="prose-github">
+                      {mentorTyped.split("\n").map((line, i) => {
+                        if (line.startsWith("```")) return <div key={i} className="font-mono text-xs text-[#8b949e] mt-1">{line}</div>;
+                        if (line.startsWith("| ")) {
+                          const cells = line.split("|").filter(c => c.trim());
+                          const isHeader = mentorTyped.split("\n")[i + 1]?.startsWith("|--");
+                          const isSep = line.includes("---");
+                          if (isSep) return null;
+                          return (
+                            <div key={i} className={`flex gap-0 border-b border-[#30363d] ${isHeader ? "font-semibold text-[#e6edf3]" : ""}`}>
+                              {cells.map((cell, ci) => (
+                                <div key={ci} className="flex-1 px-3 py-1.5 text-xs font-mono" style={{ minWidth: 0 }}>
+                                  {cell.trim().replace(/\*\*/g, "")}
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        }
+                        if (line.startsWith("**") || line.includes("**")) {
+                          return <p key={i} className="mb-2" dangerouslySetInnerHTML={{
+                            __html: line.replace(/\*\*(.*?)\*\*/g, '<strong class="text-[#e6edf3]">$1</strong>')
+                              .replace(/`(.*?)`/g, '<code class="px-1 py-0.5 rounded text-xs bg-[#6e768166] font-mono text-[#e6edf3]">$1</code>')
+                          }} />;
+                        }
+                        return line.trim() ? <p key={i} className="mb-2 text-xs font-mono text-[#79c0ff]">{line}</p> : <br key={i} />;
+                      })}
+                      <motion.span
+                        animate={{ opacity: [1, 0, 1] }}
+                        transition={{ duration: 0.7, repeat: Infinity }}
+                        className="inline-block w-0.5 h-4 bg-blue-400 ml-0.5 align-middle"
+                        style={{ display: mentorTyped.length >= MENTOR_COMMENT_BODY.length ? "none" : "inline-block" }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* GitHub-style reaction bar */}
+                  <div className="flex items-center gap-2 px-4 py-2.5 border-t border-[#30363d]" style={{ background: "#161b22" }}>
+                    <div className="flex items-center gap-1.5">
+                      {["👍", "🎉", "❤️"].map(emoji => (
+                        <button key={emoji} className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border border-[#30363d] text-[#8b949e] hover:border-[#58a6ff] hover:text-[#58a6ff] transition-colors" style={{ background: "#21262d" }}>
+                          {emoji} <span className="text-[10px]">1</span>
+                        </button>
+                      ))}
+                      <button className="px-2 py-0.5 rounded-full text-xs border border-[#30363d] text-[#8b949e] hover:border-[#58a6ff] hover:text-[#58a6ff] transition-colors" style={{ background: "#21262d" }}>
+                        + 😄
+                      </button>
+                    </div>
+                    <span className="ml-auto text-[10px] text-[#8b949e] font-mono">0 human reviews · Posted in 25s</span>
                   </div>
                 </motion.div>
               )}
@@ -2137,6 +2578,7 @@ function JargonDetector() {
                 className="w-full h-36 bg-slate-900/60 rounded-xl border border-slate-700/40 text-slate-300 text-sm font-mono p-3 resize-none focus:outline-none focus:border-teal-500/40 transition-colors"
                 placeholder="Paste your documentation here..."
               />
+              <JargonMeter text={text} />
               <button onClick={scan} disabled={scanning || !text.trim()}
                 className="mt-3 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-sm transition-all duration-200 disabled:opacity-50"
                 style={{ background: scanning ? "rgba(20,184,166,0.15)" : "rgba(20,184,166,0.2)", border: "1px solid rgba(20,184,166,0.3)", color: "#2dd4bf" }}>
@@ -2864,6 +3306,7 @@ export default function App() {
       <Nav />
       <Hero />
       <Problem />
+      <SpeedTheater />
       <HowItWorks />
       <LiveDemo />
       <BeforeAfter />
