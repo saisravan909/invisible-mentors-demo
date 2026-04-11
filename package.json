@@ -1,29 +1,30 @@
 {
-  "name": "@workspace/demo-site",
+  "name": "invisible-mentors-demo",
   "version": "1.0.0",
   "type": "module",
   "private": true,
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "tsc -b && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
     "canvas-confetti": "^1.9.4",
-    "framer-motion": "catalog:",
-    "lucide-react": "catalog:",
+    "framer-motion": "^12.23.24",
+    "lucide-react": "^0.545.0",
     "qrcode.react": "^4.2.0",
-    "react": "catalog:",
-    "react-dom": "catalog:"
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "catalog:",
+    "@tailwindcss/vite": "^4.1.14",
     "@types/canvas-confetti": "^1.9.0",
-    "@types/node": "catalog:",
-    "@types/react": "catalog:",
-    "@types/react-dom": "catalog:",
-    "@vitejs/plugin-react": "catalog:",
-    "tailwindcss": "catalog:",
-    "vite": "catalog:"
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^5.0.4",
+    "tailwindcss": "^4.1.14",
+    "typescript": "^5.8.3",
+    "vite": "^7.3.0"
   }
 }
