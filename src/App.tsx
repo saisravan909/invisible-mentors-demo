@@ -837,6 +837,572 @@ function AnalogySplash() {
   );
 }
 
+// ─────────────────────────────────────────────
+// OPTION A — PIPELINE SLOT VISUAL
+// ─────────────────────────────────────────────
+const PIPELINE_STAGES = [
+  { id: "trigger",  label: "PR Opened",    tool: "github/actions",    Icon: GitPullRequest, isIM: false, isGate: false, timing: null   },
+  { id: "build",    label: "Build",        tool: "docker build",      Icon: Code2,          isIM: false, isGate: false, timing: "2m 14s"},
+  { id: "lint",     label: "Lint",         tool: "ESLint + Prettier", Icon: Shield,         isIM: false, isGate: false, timing: "43s"  },
+  { id: "tests",    label: "Tests",        tool: "pytest · jest",     Icon: Zap,            isIM: false, isGate: false, timing: "4m 02s"},
+  { id: "security", label: "Security",     tool: "Snyk scan",         Icon: Shield,         isIM: false, isGate: false, timing: "1m 23s"},
+  { id: "docs",     label: "Doc Quality",  tool: "Invisible Mentors", Icon: FileText,       isIM: true,  isGate: false, timing: "25s"  },
+  { id: "gate",     label: "All Clear",    tool: "Merge allowed",     Icon: Check,          isIM: false, isGate: true,  timing: null   },
+];
+
+function PipelineSlot() {
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true, margin: "-100px" });
+  const [doneCount, setDoneCount] = useState(-1);
+  const [imTimer, setImTimer] = useState(25);
+  const imTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (!inView) return;
+    PIPELINE_STAGES.forEach((s, i) => {
+      setTimeout(() => {
+        setDoneCount(i);
+        if (s.isIM) {
+          let t = 24;
+          imTimerRef.current = setInterval(() => {
+            setImTimer(prev => {
+              if (prev <= 1) { clearInterval(imTimerRef.current!); return 0; }
+              return prev - 1;
+            });
+            t--;
+          }, 22);
+        }
+      }, 500 + i * 620);
+    });
+    return () => { if (imTimerRef.current) clearInterval(imTimerRef.current); };
+  }, [inView]);
+
+  return (
+    <section ref={ref} id="pipeline" className="py-20 relative overflow-hidden">
+      <div className="absolute inset-0 grid-bg opacity-10 pointer-events-none" />
+      <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-navy-950 to-transparent pointer-events-none" />
+      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-navy-950 to-transparent pointer-events-none" />
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 relative">
+
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          className="text-center mb-14"
+        >
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-blue-500/30 bg-blue-500/8 text-blue-400 text-xs font-semibold uppercase tracking-widest mb-6">
+            <GitPullRequest className="w-3.5 h-3.5" />
+            CI / CD Pipeline Placement
+          </div>
+          <h2 className="text-4xl sm:text-5xl font-black text-slate-100 mb-4 leading-tight">
+            One new gate.{" "}
+            <span className="gradient-text">Zero new process.</span>
+          </h2>
+          <p className="text-slate-400 text-lg max-w-2xl mx-auto leading-relaxed">
+            Your pipeline already enforces lint, tests, and security scans automatically.
+            Documentation quality now runs in the same slot — same discipline, same automation.
+          </p>
+        </motion.div>
+
+        {/* ── Pipeline card ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 36 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          transition={{ delay: 0.2 }}
+          className="rounded-2xl border border-slate-800/70 bg-slate-900/50 backdrop-blur-sm overflow-hidden mb-8"
+        >
+          {/* Card header bar */}
+          <div className="flex items-center gap-3 px-5 py-3 border-b border-slate-800/80 bg-slate-900/80">
+            <div className="flex gap-1.5">
+              <div className="w-3 h-3 rounded-full bg-slate-700" />
+              <div className="w-3 h-3 rounded-full bg-slate-700" />
+              <div className="w-3 h-3 rounded-full bg-slate-700" />
+            </div>
+            <div className="flex items-center gap-2 text-slate-500 text-xs font-mono">
+              <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+              workflow: docs-pipeline.yml — triggered by pull_request #47
+            </div>
+          </div>
+
+          {/* Stages */}
+          <div className="p-6 sm:p-10 overflow-x-auto">
+            <div className="flex items-end gap-0 justify-start xl:justify-center min-w-max mx-auto">
+              {PIPELINE_STAGES.map((stage, i) => {
+                const done = doneCount >= i;
+                const isActive = doneCount === i;
+
+                return (
+                  <React.Fragment key={stage.id}>
+                    {/* Connector */}
+                    {i > 0 && (
+                      <div className="flex items-center self-center mb-8 shrink-0">
+                        <motion.div
+                          className="h-px"
+                          style={{ width: stage.isIM ? 36 : stage.id === "gate" ? 36 : 28 }}
+                          animate={{ background: done ? (stage.isIM ? "rgba(59,130,246,0.5)" : stage.isGate ? "rgba(34,197,94,0.5)" : "rgba(100,116,139,0.5)") : "rgba(30,41,59,0.8)" }}
+                          transition={{ duration: 0.4 }}
+                        />
+                        <motion.div
+                          animate={{ borderLeftColor: done ? (stage.isIM ? "rgba(59,130,246,0.5)" : stage.isGate ? "rgba(34,197,94,0.5)" : "rgba(100,116,139,0.5)") : "rgba(30,41,59,0.8)" }}
+                          transition={{ duration: 0.4 }}
+                          style={{ width: 0, height: 0, borderTop: "4px solid transparent", borderBottom: "4px solid transparent", borderLeft: "5px solid" }}
+                        />
+                      </div>
+                    )}
+
+                    {/* Tile */}
+                    <motion.div
+                      animate={{ opacity: done ? 1 : 0.3, y: isActive && stage.isIM ? -4 : 0 }}
+                      transition={{ duration: 0.5 }}
+                      className={`relative flex flex-col items-center shrink-0 rounded-2xl border transition-all duration-500 ${
+                        stage.isIM
+                          ? done
+                            ? "border-blue-500/60 bg-gradient-to-b from-blue-950/70 to-slate-900/70"
+                            : "border-blue-500/15 bg-slate-900/40"
+                          : stage.isGate
+                          ? done
+                            ? "border-green-500/40 bg-green-950/30"
+                            : "border-slate-800/50 bg-slate-900/30"
+                          : "border-slate-800/50 bg-slate-900/30"
+                      } ${stage.isIM ? "px-5 py-5 w-36" : stage.isGate ? "px-4 py-5 w-28" : "px-4 py-5 w-[6.5rem]"}`}
+                    >
+                      {/* IM animated glow */}
+                      {stage.isIM && done && (
+                        <motion.div
+                          className="absolute inset-0 rounded-2xl pointer-events-none"
+                          animate={{ opacity: [0.5, 1, 0.5] }}
+                          transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+                          style={{
+                            background: "radial-gradient(ellipse 90% 70% at 50% 40%, rgba(59,130,246,0.25), transparent 75%)",
+                            boxShadow: "0 0 48px 6px rgba(59,130,246,0.18), inset 0 0 0 1px rgba(59,130,246,0.1)",
+                          }}
+                        />
+                      )}
+
+                      {/* Status badge */}
+                      <div className={`absolute -top-2.5 -right-2.5 w-5 h-5 rounded-full flex items-center justify-center transition-all duration-400 ${
+                        done
+                          ? stage.isGate ? "bg-green-500" : stage.isIM ? "bg-blue-500" : "bg-emerald-600"
+                          : "bg-slate-800 border border-slate-700"
+                      }`}>
+                        {done
+                          ? <Check className="w-2.5 h-2.5 text-white" />
+                          : <div className="w-1.5 h-1.5 rounded-full bg-slate-600" />
+                        }
+                      </div>
+
+                      {/* Icon */}
+                      <motion.div
+                        animate={{
+                          background: done
+                            ? stage.isIM ? "rgba(59,130,246,0.25)" : stage.isGate ? "rgba(34,197,94,0.15)" : "rgba(71,85,105,0.35)"
+                            : "rgba(15,23,42,0.6)",
+                        }}
+                        transition={{ duration: 0.5 }}
+                        className="w-11 h-11 rounded-xl flex items-center justify-center mb-3 transition-all"
+                      >
+                        <stage.Icon className={`w-5 h-5 transition-colors duration-400 ${
+                          done
+                            ? stage.isIM ? "text-blue-400" : stage.isGate ? "text-green-400" : "text-slate-300"
+                            : "text-slate-700"
+                        }`} />
+                      </motion.div>
+
+                      {/* Label */}
+                      <div className={`font-bold text-xs mb-1 text-center leading-tight transition-colors duration-400 ${
+                        done
+                          ? stage.isIM ? "text-blue-200" : stage.isGate ? "text-green-200" : "text-slate-200"
+                          : "text-slate-700"
+                      }`}>
+                        {stage.label}
+                      </div>
+
+                      {/* Tool */}
+                      <div className={`text-[10px] text-center mb-2.5 transition-colors duration-400 leading-snug ${
+                        done ? stage.isIM ? "text-blue-400/70" : "text-slate-500" : "text-slate-800"
+                      }`}>
+                        {stage.tool}
+                      </div>
+
+                      {/* Timing */}
+                      {stage.timing && (
+                        <div className={`font-mono font-black text-sm transition-colors duration-400 ${
+                          done ? stage.isIM ? "text-blue-300" : "text-slate-400" : "text-slate-800"
+                        }`}>
+                          {stage.isIM
+                            ? done
+                              ? imTimer > 0
+                                ? <motion.span key={imTimer} initial={{ scale: 1.3, color: "#93c5fd" }} animate={{ scale: 1 }}>{imTimer}s</motion.span>
+                                : <span className="text-blue-300">25s</span>
+                              : "—"
+                            : done ? stage.timing : "—"
+                          }
+                        </div>
+                      )}
+
+                      {/* IM badge */}
+                      {stage.isIM && (
+                        <div className={`mt-2.5 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider transition-all ${
+                          done
+                            ? "bg-blue-500/20 border border-blue-500/40 text-blue-400"
+                            : "bg-slate-800 border border-slate-700/50 text-slate-700"
+                        }`}>
+                          Invisible Mentors
+                        </div>
+                      )}
+                    </motion.div>
+                  </React.Fragment>
+                );
+              })}
+            </div>
+
+            {/* Horizontal label: everything else vs IM */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={inView && doneCount >= PIPELINE_STAGES.length - 1 ? { opacity: 1 } : {}}
+              transition={{ delay: 0.4 }}
+              className="flex justify-center gap-8 mt-8 text-xs text-slate-600 font-mono"
+            >
+              <span className="flex items-center gap-1.5">
+                <div className="w-6 h-px bg-slate-700" />
+                Already automated — no change
+              </span>
+              <span className="flex items-center gap-1.5 text-blue-500/70">
+                <div className="w-6 h-px bg-blue-500/50" />
+                Newly automated — Invisible Mentors
+              </span>
+            </motion.div>
+          </div>
+        </motion.div>
+
+        {/* Three-col stat row */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={inView && doneCount >= PIPELINE_STAGES.length - 1 ? { opacity: 1, y: 0 } : {}}
+          transition={{ delay: 0.3 }}
+          className="grid grid-cols-1 sm:grid-cols-3 gap-4"
+        >
+          {[
+            { label: "Same slot as ESLint",         sub: "Runs at PR time — not after merge",          accent: "border-slate-700/50 text-slate-300" },
+            { label: "25 seconds",                  sub: "From PR open to feedback posted",             accent: "border-blue-500/30 text-blue-300"   },
+            { label: "7 lines of YAML",             sub: "Total setup cost to onboard a new repo",      accent: "border-green-500/30 text-green-300"  },
+          ].map(item => (
+            <div key={item.label} className={`rounded-xl border px-5 py-4 text-center bg-slate-900/30 ${item.accent}`}>
+              <div className={`font-black text-sm mb-1 ${item.accent.split(" ")[1]}`}>{item.label}</div>
+              <div className="text-slate-600 text-xs">{item.sub}</div>
+            </div>
+          ))}
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+// ─────────────────────────────────────────────
+// OPTION C — GITHUB ACTIONS RUN
+// ─────────────────────────────────────────────
+const GHA_JOBS = [
+  {
+    id: "build", label: "build", timing: "2m 14s", isIM: false,
+    steps: [
+      { label: "Checkout code",                               timing: "0.8s",   isKey: false, note: null },
+      { label: "Set up Python 3.x",                          timing: "4.2s",   isKey: false, note: null },
+      { label: "Install dependencies (pip install …)",       timing: "28.4s",  isKey: false, note: null },
+      { label: "Run build",                                   timing: "1m 41s", isKey: false, note: null },
+    ],
+  },
+  {
+    id: "lint", label: "lint", timing: "43s", isIM: false,
+    steps: [
+      { label: "Checkout code",  timing: "0.7s", isKey: false, note: null },
+      { label: "ESLint",         timing: "12s",  isKey: false, note: null },
+      { label: "Prettier check", timing: "8s",   isKey: false, note: null },
+    ],
+  },
+  {
+    id: "tests", label: "tests", timing: "4m 02s", isIM: false,
+    steps: [
+      { label: "Checkout code",    timing: "0.8s",   isKey: false, note: null },
+      { label: "Run pytest",       timing: "3m 42s", isKey: false, note: null },
+      { label: "Upload coverage",  timing: "5s",     isKey: false, note: null },
+    ],
+  },
+  {
+    id: "vale-jargon-check", label: "vale-jargon-check", timing: "3s", isIM: true,
+    steps: [
+      { label: "Checkout code",                               timing: "0.8s", isKey: false, note: null },
+      { label: "Install Vale",                                timing: "0.4s", isKey: false, note: null },
+      { label: "vale --config .vale.ini docs/",              timing: "2.1s", isKey: true,  note: "Scanned docs/onboarding.md — found: utilize, leverage, paradigms" },
+      { label: "Exit 1 — jargon detected in 3 phrases",      timing: "0.1s", isKey: true,  note: "Triggering ai-mentor-audit with flagged context", isFlagged: true },
+    ],
+  },
+  {
+    id: "ai-mentor-audit", label: "ai-mentor-audit", timing: "8s", isIM: true,
+    steps: [
+      { label: "Checkout code",                               timing: "0.8s", isKey: false, note: null },
+      { label: "python ai_mentor.py --table --file docs/onboarding.md", timing: "6.2s", isKey: true, note: "Gemini 2.5 Flash analyzed 3 phrases → plain-English rewrites ready" },
+      { label: "Post sticky PR comment to #47",               timing: "0.9s", isKey: true,  note: "Comment posted · 0 human reviews required · 25s elapsed since PR opened" },
+    ],
+  },
+];
+
+function GitHubActionsRun() {
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true, margin: "-80px" });
+  const [selectedJob, setSelectedJob] = useState("vale-jargon-check");
+  const [completedJobs, setCompletedJobs] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!inView) return;
+    const delays = [600, 1400, 2600, 4000, 5600];
+    GHA_JOBS.forEach((j, i) => {
+      setTimeout(() => setCompletedJobs(prev => new Set([...prev, j.id])), delays[i]);
+    });
+  }, [inView]);
+
+  const activeJob = GHA_JOBS.find(j => j.id === selectedJob)!;
+  const allDone = completedJobs.size === GHA_JOBS.length;
+
+  return (
+    <section ref={ref} className="py-24 relative" id="github-actions">
+      <div className="max-w-6xl mx-auto px-6 relative">
+
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          className="text-center mb-12"
+        >
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-cyan-500/30 bg-cyan-500/8 text-cyan-400 text-xs font-semibold uppercase tracking-widest mb-6">
+            <Github className="w-3.5 h-3.5" />
+            GitHub Actions — What the Maintainer Sees
+          </div>
+          <h2 className="text-4xl sm:text-5xl font-black text-slate-100 mb-4 leading-tight">
+            This is the screen your maintainer{" "}
+            <span className="gradient-text">already knows.</span>
+          </h2>
+          <p className="text-slate-400 text-lg max-w-2xl mx-auto leading-relaxed">
+            No new dashboard. No new tool to learn. Just two new jobs in the Actions panel —
+            the same interface your team checks after every push.
+          </p>
+        </motion.div>
+
+        {/* GitHub Actions panel */}
+        <motion.div
+          initial={{ opacity: 0, y: 36 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          transition={{ delay: 0.2 }}
+          className="rounded-2xl overflow-hidden border border-[#30363d] shadow-2xl shadow-black/70"
+          style={{ background: "#0d1117" }}
+        >
+          {/* Window chrome */}
+          <div className="flex items-center gap-3 px-4 py-3 border-b border-[#21262d]" style={{ background: "#161b22" }}>
+            <div className="flex gap-1.5">
+              <div className="w-3 h-3 rounded-full bg-[#ff5f57]" />
+              <div className="w-3 h-3 rounded-full bg-[#febc2e]" />
+              <div className="w-3 h-3 rounded-full bg-[#28c840]" />
+            </div>
+            <div className="flex items-center gap-2 text-[#8b949e] text-xs font-mono overflow-x-auto whitespace-nowrap">
+              <Github className="w-3.5 h-3.5 shrink-0" />
+              <span>saisravan909 / Invisible-Mentors</span>
+              <ChevronRight className="w-3 h-3 shrink-0 text-[#484f58]" />
+              <span>Actions</span>
+              <ChevronRight className="w-3 h-3 shrink-0 text-[#484f58]" />
+              <span>docs-pipeline</span>
+              <ChevronRight className="w-3 h-3 shrink-0 text-[#484f58]" />
+              <span>PR #47 — Update onboarding.md</span>
+            </div>
+          </div>
+
+          {/* Status bar */}
+          <div className="flex items-center gap-3 px-5 py-3 border-b border-[#21262d]/50" style={{ background: "#0d1117" }}>
+            <motion.div
+              animate={{ background: allDone ? "#1a7f37" : "#9e6a03" }}
+              className="flex items-center gap-2 px-3 py-1 rounded-full text-white text-xs font-semibold"
+            >
+              {allDone ? <Check className="w-3.5 h-3.5" /> : <div className="w-3 h-3 rounded-full border-2 border-white/50 border-t-white animate-spin" />}
+              {allDone ? "All jobs passed" : "Running…"}
+            </motion.div>
+            <span className="text-[#484f58] text-xs font-mono">
+              triggered by pull_request · {allDone ? "4m 08s" : "in progress"}
+            </span>
+          </div>
+
+          {/* Main content */}
+          <div className="flex" style={{ minHeight: 420 }}>
+
+            {/* Left sidebar — job list */}
+            <div className="w-60 shrink-0 border-r border-[#21262d] py-4" style={{ background: "#161b22" }}>
+              <div className="text-[#484f58] text-[10px] uppercase tracking-widest font-semibold mb-3 px-4">
+                Jobs ({GHA_JOBS.length})
+              </div>
+              {GHA_JOBS.map(j => {
+                const done = completedJobs.has(j.id);
+                const selected = selectedJob === j.id;
+                return (
+                  <button
+                    key={j.id}
+                    onClick={() => setSelectedJob(j.id)}
+                    className="w-full relative flex items-center gap-2.5 px-4 py-2.5 text-left transition-colors"
+                    style={{ background: selected ? "#21262d" : "transparent" }}
+                  >
+                    {/* IM sidebar glow */}
+                    {j.isIM && done && (
+                      <div className="absolute inset-0 pointer-events-none" style={{ boxShadow: "inset 2px 0 0 rgba(56,189,248,0.5)", background: "rgba(56,189,248,0.04)" }} />
+                    )}
+
+                    {/* Status circle */}
+                    <motion.div
+                      animate={{ background: done ? "#1a7f37" : "#30363d" }}
+                      className="w-4 h-4 rounded-full flex items-center justify-center shrink-0"
+                    >
+                      {done
+                        ? <Check className="w-2.5 h-2.5 text-white" />
+                        : <div className="w-1.5 h-1.5 rounded-full bg-[#8b949e] animate-pulse" />
+                      }
+                    </motion.div>
+
+                    {/* Name */}
+                    <span className={`text-xs font-mono truncate ${
+                      j.isIM ? (done ? "text-sky-300" : "text-[#484f58]") : (done ? "text-[#e6edf3]" : "text-[#484f58]")
+                    }`}>
+                      {j.label}
+                    </span>
+
+                    {/* Timing */}
+                    {done && <span className="ml-auto text-[10px] font-mono text-[#484f58] shrink-0 pl-1">{j.timing}</span>}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Right panel — step detail */}
+            <div className="flex-1 p-5 overflow-hidden" style={{ background: "#0d1117" }}>
+              {/* Job title row */}
+              <div className="flex items-center gap-3 mb-5 pb-4 border-b border-[#21262d]">
+                <motion.div
+                  animate={{ background: completedJobs.has(activeJob.id) ? "#1a7f37" : "#30363d" }}
+                  className="w-6 h-6 rounded-full flex items-center justify-center shrink-0"
+                >
+                  {completedJobs.has(activeJob.id)
+                    ? <Check className="w-4 h-4 text-white" />
+                    : <div className="w-2 h-2 rounded-full bg-[#8b949e] animate-pulse" />
+                  }
+                </motion.div>
+                <span className={`text-sm font-semibold font-mono ${activeJob.isIM ? "text-sky-300" : "text-[#e6edf3]"}`}>
+                  {activeJob.label}
+                </span>
+                {activeJob.isIM && (
+                  <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full border border-sky-500/30 bg-sky-500/10 text-sky-400 font-semibold">
+                    Invisible Mentors
+                  </span>
+                )}
+                {completedJobs.has(activeJob.id) && (
+                  <span className="ml-auto text-[10px] font-mono text-[#484f58]">{activeJob.timing}</span>
+                )}
+              </div>
+
+              {/* Steps */}
+              <div className="space-y-1.5">
+                <AnimatePresence mode="wait">
+                  {completedJobs.has(activeJob.id) ? (
+                    activeJob.steps.map((step, i) => (
+                      <motion.div
+                        key={step.label}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: i * 0.18 }}
+                        className={`rounded-lg px-3 py-2.5 ${
+                          step.isKey
+                            ? step.isFlagged
+                              ? "bg-amber-500/5 border border-amber-500/20"
+                              : "bg-sky-500/5 border border-sky-500/20"
+                            : "border border-transparent"
+                        }`}
+                      >
+                        <div className="flex items-start gap-2.5">
+                          <Check className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${step.isFlagged ? "text-amber-400" : "text-green-500"}`} />
+                          <div className="flex-1 min-w-0">
+                            <div className={`text-xs font-mono ${
+                              step.isKey ? (step.isFlagged ? "text-amber-300" : "text-sky-200") : "text-[#8b949e]"
+                            }`}>
+                              {step.label}
+                            </div>
+                            {step.note && (
+                              <div className={`text-[11px] font-mono mt-1 leading-snug ${
+                                step.isFlagged ? "text-amber-500/80" : "text-sky-400/70"
+                              }`}>
+                                {step.note}
+                              </div>
+                            )}
+                          </div>
+                          <span className="text-[10px] font-mono text-[#484f58] shrink-0 pl-2">{step.timing}</span>
+                        </div>
+                      </motion.div>
+                    ))
+                  ) : (
+                    <motion.div key="waiting" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-2 text-[#484f58] text-xs font-mono py-2">
+                      <div className="w-2 h-2 rounded-full bg-[#484f58] animate-pulse" />
+                      Waiting for runner…
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* IM summary card */}
+              {activeJob.isIM && completedJobs.has(activeJob.id) && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.7 }}
+                  className="mt-6 rounded-xl border border-sky-500/20 bg-sky-500/5 px-4 py-3"
+                >
+                  <div className="text-sky-400 text-xs font-semibold mb-1 flex items-center gap-1.5">
+                    <Bot className="w-3.5 h-3.5" /> Invisible Mentors — gate result
+                  </div>
+                  <div className="text-[#8b949e] text-[11px] font-mono leading-relaxed">
+                    {activeJob.id === "vale-jargon-check"
+                      ? "Vale exit 1. 3 jargon phrases detected in docs/onboarding.md. Passing flagged context to Gemini for structured rewrite."
+                      : "PR #47 sticky comment posted. Contributor sees plain-English suggestions within 30 seconds of opening the PR. No human clicked anything."}
+                  </div>
+                </motion.div>
+              )}
+            </div>
+          </div>
+
+          {/* Bottom bar */}
+          <div className="flex items-center justify-between px-5 py-2.5 border-t border-[#21262d] text-[10px] font-mono text-[#484f58]" style={{ background: "#161b22" }}>
+            <span>5 jobs · {allDone ? "all passed" : "running"}</span>
+            {allDone && (
+              <motion.span
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex items-center gap-1.5 text-sky-500/70"
+              >
+                <div className="w-1.5 h-1.5 rounded-full bg-sky-500" />
+                Doc quality enforced automatically — 0 human reviews required
+              </motion.span>
+            )}
+          </div>
+        </motion.div>
+
+        {/* Callout */}
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={inView ? { opacity: 1 } : {}}
+          transition={{ delay: 1.2 }}
+          className="text-center text-slate-600 text-sm mt-6"
+        >
+          Click any job in the sidebar to inspect its steps.{" "}
+          <span className="text-sky-500">vale-jargon-check</span> and{" "}
+          <span className="text-sky-500">ai-mentor-audit</span> are the two Invisible Mentors gates.
+        </motion.p>
+      </div>
+    </section>
+  );
+}
+
 function Problem() {
   const stats = [
     { value: 4, suffix: " days", label: "Average wait time for a first PR review in active open source projects", icon: Clock, color: "text-red-400", bg: "bg-red-500/10 border-red-500/20" },
@@ -4396,6 +4962,7 @@ export default function App() {
     <div className="min-h-screen bg-navy-950">
       <Nav />
       <Hero />
+      <PipelineSlot />
       <Problem />
       <Impact />
       <AnalogySplash />
@@ -4403,6 +4970,7 @@ export default function App() {
       <HowItWorks />
       <SpeedTheater />
       <LiveDemo />
+      <GitHubActionsRun />
       <BeforeAfter />
       <ROICalculator />
       <WhyUs />
