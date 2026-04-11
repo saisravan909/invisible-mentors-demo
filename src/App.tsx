@@ -718,6 +718,131 @@ function CountUp({ target, suffix = "" }: { target: number; suffix?: string }) {
   return <span ref={ref}>{count}{suffix}</span>;
 }
 
+// ─────────────────────────────────────────────
+// PLAIN-ENGLISH EXPLAINER (non-technical anchor)
+// ─────────────────────────────────────────────
+function AnalogySplash() {
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true, margin: "-80px" });
+
+  const analogies = [
+    {
+      icon: "✍️",
+      role: "The New Intern",
+      without: "Submits a report full of buzzwords. Boss returns it 4 days later with one line: 'rewrite this.'",
+      with: "Gets a friendly note 30 seconds after submitting: 'Try \u201Cuse\u201D instead of \u201Cutilize\u201D.' Fixes it. Done.",
+      color: "#3b82f6",
+    },
+    {
+      icon: "📋",
+      role: "The Hiring Manager",
+      without: "Reads 40 resumes. Half are jargon soup. Hours lost on back-and-forth.",
+      with: "Every resume is auto-flagged for unclear language before it lands in the inbox. Only plain writing gets through.",
+      color: "#a855f7",
+    },
+    {
+      icon: "🏗️",
+      role: "The Construction Foreman",
+      without: "New crew members submit progress reports nobody understands. Meetings called to clarify.",
+      with: "Reports are automatically checked against plain-English standards before the foreman sees them.",
+      color: "#14b8a6",
+    },
+  ];
+
+  return (
+    <section ref={ref} className="py-16 relative" id="explainer">
+      <div className="max-w-6xl mx-auto px-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.6 }}
+          className="text-center mb-12"
+        >
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-sm font-medium mb-5">
+            <BookOpen className="w-3.5 h-3.5" />
+            No technical background needed
+          </div>
+          <h2 className="text-4xl sm:text-5xl font-black text-slate-100 mb-4">
+            Think of It as Your Team's
+            <br />
+            <span className="gradient-text">Always-On Writing Coach</span>
+          </h2>
+          <p className="text-lg text-slate-400 max-w-2xl mx-auto">
+            Every time someone submits a document for review, an invisible mentor reads it first —
+            spots the jargon, suggests plain words, and posts the feedback automatically.
+            No human needed. No waiting. Just clear writing.
+          </p>
+        </motion.div>
+
+        {/* Big visual analogy */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          transition={{ delay: 0.15 }}
+          className="card-glass rounded-2xl border border-blue-500/15 p-8 mb-8 text-center"
+        >
+          <div className="text-6xl mb-4">🧑‍💼</div>
+          <h3 className="text-2xl font-black text-slate-100 mb-3">
+            Like Autocorrect — But for Professional Writing
+          </h3>
+          <p className="text-slate-400 max-w-xl mx-auto mb-6">
+            Autocorrect catches spelling mistakes automatically, before you hit send.
+            Invisible Mentors catches <span className="text-amber-300 font-semibold">jargon and unclear language</span> automatically,
+            before a reviewer even opens the document.
+          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-sm">
+            {[
+              { label: "Someone writes a document", icon: "📝" },
+              { label: "→", plain: true },
+              { label: "Invisible Mentors checks it instantly", icon: "🤖" },
+              { label: "→", plain: true },
+              { label: "Plain-English rewrite suggested", icon: "✅" },
+              { label: "→", plain: true },
+              { label: "Reviewer sees only clear writing", icon: "🎉" },
+            ].map((step, i) =>
+              step.plain ? (
+                <span key={i} className="text-slate-600 text-lg font-bold hidden sm:block">→</span>
+              ) : (
+                <div key={i} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800/60 border border-slate-700/40">
+                  <span className="text-xl">{step.icon}</span>
+                  <span className="text-slate-300 font-medium">{step.label}</span>
+                </div>
+              )
+            )}
+          </div>
+        </motion.div>
+
+        {/* Three relatable stories */}
+        <div className="grid md:grid-cols-3 gap-5">
+          {analogies.map((a, i) => (
+            <motion.div
+              key={a.role}
+              initial={{ opacity: 0, y: 30 }}
+              animate={inView ? { opacity: 1, y: 0 } : {}}
+              transition={{ delay: 0.1 + i * 0.12 }}
+              className="card-glass rounded-2xl border p-6"
+              style={{ borderColor: `${a.color}25` }}
+            >
+              <div className="text-3xl mb-3">{a.icon}</div>
+              <h4 className="text-slate-100 font-bold text-base mb-4">{a.role}</h4>
+              <div className="space-y-3">
+                <div className="bg-red-500/8 border border-red-500/15 rounded-xl p-3">
+                  <p className="text-[10px] text-red-400 font-bold uppercase tracking-widest mb-1.5">Without it</p>
+                  <p className="text-slate-400 text-xs leading-relaxed">{a.without}</p>
+                </div>
+                <div className="bg-green-500/8 border border-green-500/15 rounded-xl p-3">
+                  <p className="text-[10px] text-green-400 font-bold uppercase tracking-widest mb-1.5">With Invisible Mentors</p>
+                  <p className="text-slate-400 text-xs leading-relaxed">{a.with}</p>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Problem() {
   const stats = [
     { value: 4, suffix: " days", label: "Average wait time for a first PR review in active open source projects", icon: Clock, color: "text-red-400", bg: "bg-red-500/10 border-red-500/20" },
@@ -2226,6 +2351,241 @@ function Impact() {
   );
 }
 
+// ─────────────────────────────────────────────
+// ROI CALCULATOR (for C-suite / decision makers)
+// ─────────────────────────────────────────────
+function ROICalculator() {
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true, margin: "-80px" });
+  const [prsPerWeek, setPrsPerWeek] = useState(10);
+  const [ratePerHour, setRatePerHour] = useState(120);
+  const [reviewMins, setReviewMins] = useState(30);
+
+  const weeklyHours = (prsPerWeek * reviewMins) / 60;
+  const annualCost = weeklyHours * 52 * ratePerHour;
+  const saved = annualCost;
+  const savedFormatted = saved >= 1000 ? `$${(saved / 1000).toFixed(0)}k` : `$${saved.toFixed(0)}`;
+  const hoursPerYear = Math.round(weeklyHours * 52);
+
+  return (
+    <section ref={ref} className="py-20 relative" id="roi">
+      <div className="max-w-4xl mx-auto px-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          className="text-center mb-12"
+        >
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-500/10 border border-green-500/20 text-green-400 text-sm font-medium mb-5">
+            <DollarSign className="w-3.5 h-3.5" />
+            For Decision Makers
+          </div>
+          <h2 className="text-4xl sm:text-5xl font-black text-slate-100 mb-4">
+            What Is Manual Doc Review
+            <br />
+            <span className="gradient-text">Actually Costing You?</span>
+          </h2>
+          <p className="text-slate-400 max-w-xl mx-auto">
+            Adjust the sliders to match your team. See the real cost of doing nothing.
+          </p>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          transition={{ delay: 0.1 }}
+          className="card-glass rounded-2xl border border-slate-700/30 overflow-hidden"
+        >
+          {/* Sliders */}
+          <div className="p-8 space-y-8">
+            {[
+              {
+                label: "Documentation PRs per week",
+                value: prsPerWeek,
+                min: 1, max: 50, step: 1,
+                set: setPrsPerWeek,
+                display: `${prsPerWeek} PRs`,
+                color: "#3b82f6",
+                icon: GitPullRequest,
+              },
+              {
+                label: "Maintainer hourly rate (USD)",
+                value: ratePerHour,
+                min: 20, max: 400, step: 10,
+                set: setRatePerHour,
+                display: `$${ratePerHour}/hr`,
+                color: "#a855f7",
+                icon: DollarSign,
+              },
+              {
+                label: "Minutes spent reviewing each PR",
+                value: reviewMins,
+                min: 5, max: 120, step: 5,
+                set: setReviewMins,
+                display: `${reviewMins} min`,
+                color: "#f59e0b",
+                icon: Clock,
+              },
+            ].map((s) => (
+              <div key={s.label}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <s.icon className="w-4 h-4" style={{ color: s.color }} />
+                    <span className="text-slate-300 text-sm font-medium">{s.label}</span>
+                  </div>
+                  <span className="text-sm font-black font-mono" style={{ color: s.color }}>{s.display}</span>
+                </div>
+                <div className="relative">
+                  <input
+                    type="range"
+                    min={s.min} max={s.max} step={s.step}
+                    value={s.value}
+                    onChange={(e) => s.set(Number(e.target.value))}
+                    className="w-full h-2 rounded-full appearance-none cursor-pointer"
+                    style={{
+                      background: `linear-gradient(to right, ${s.color} ${((s.value - s.min) / (s.max - s.min)) * 100}%, rgba(30,41,59,0.8) ${((s.value - s.min) / (s.max - s.min)) * 100}%)`,
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Results */}
+          <div className="border-t border-slate-700/30 bg-slate-900/40 p-8">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              {[
+                { label: "Review time per week", value: `${weeklyHours.toFixed(1)} hrs`, color: "#f59e0b", sub: "of a maintainer's time" },
+                { label: "Review hours per year", value: `${hoursPerYear} hrs`, color: "#ef4444", sub: `≈ ${(hoursPerYear / 8).toFixed(0)} full work days` },
+                { label: "Annual cost (manual)", value: savedFormatted, color: "#ef4444", sub: "in maintainer time" },
+                { label: "Annual cost (with IM)", value: "$0", color: "#22c55e", sub: "free & open source" },
+              ].map((r) => (
+                <div key={r.label} className="text-center p-4 rounded-xl bg-slate-800/50 border border-slate-700/30">
+                  <div className="text-2xl font-black mb-1" style={{ color: r.color }}>{r.value}</div>
+                  <div className="text-[10px] text-slate-500 leading-tight font-semibold uppercase tracking-wider mb-0.5">{r.label}</div>
+                  <div className="text-[10px] text-slate-600">{r.sub}</div>
+                </div>
+              ))}
+            </div>
+            <motion.div
+              className="rounded-xl p-5 text-center border border-green-500/20 bg-green-500/5"
+              animate={{ borderColor: ["rgba(34,197,94,0.2)", "rgba(34,197,94,0.4)", "rgba(34,197,94,0.2)"] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            >
+              <p className="text-slate-400 text-sm mb-1">Your team saves approximately</p>
+              <p className="text-4xl font-black text-green-400 mb-1">{savedFormatted} / year</p>
+              <p className="text-slate-500 text-xs">by automating basic documentation review with Invisible Mentors</p>
+            </motion.div>
+          </div>
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+// ─────────────────────────────────────────────
+// WHY NOT JUST USE X? COMPARISON TABLE
+// ─────────────────────────────────────────────
+function WhyUs() {
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true, margin: "-80px" });
+
+  const rows = [
+    { feature: "Runs automatically in GitHub CI", im: true, grammarly: false, vale: "partial", manual: false, copilot: false },
+    { feature: "AI-generated plain-English rewrite (not just a flag)", im: true, grammarly: false, vale: false, manual: "partial", copilot: "partial" },
+    { feature: "Comment posted directly on the PR", im: true, grammarly: false, vale: false, manual: true, copilot: false },
+    { feature: "No new tool for contributors to learn", im: true, grammarly: false, vale: false, manual: true, copilot: false },
+    { feature: "100% free & open source", im: true, grammarly: false, vale: true, manual: true, copilot: false },
+    { feature: "Works for any language / any team size", im: true, grammarly: "partial", vale: true, manual: false, copilot: "partial" },
+    { feature: "Catches domain-specific jargon (custom rules)", im: true, grammarly: false, vale: true, manual: true, copilot: false },
+    { feature: "Scales to 1000 PRs/day with zero extra cost", im: true, grammarly: false, vale: true, manual: false, copilot: false },
+  ];
+
+  const columns = [
+    { key: "im", label: "Invisible\nMentors", highlight: true, color: "#3b82f6" },
+    { key: "grammarly", label: "Grammarly", color: "#64748b" },
+    { key: "vale", label: "Vale alone", color: "#64748b" },
+    { key: "manual", label: "Manual\nReview", color: "#64748b" },
+    { key: "copilot", label: "GitHub\nCopilot", color: "#64748b" },
+  ];
+
+  const Cell = ({ v }: { v: boolean | string }) => {
+    if (v === true) return <Check className="w-4 h-4 text-green-400 mx-auto" />;
+    if (v === false) return <X className="w-4 h-4 text-slate-700 mx-auto" />;
+    return <span className="text-amber-400 text-xs font-bold">Partial</span>;
+  };
+
+  return (
+    <section ref={ref} className="py-20 relative" id="comparison">
+      <div className="max-w-5xl mx-auto px-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          className="text-center mb-12"
+        >
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-sm font-medium mb-5">
+            <BarChart3 className="w-3.5 h-3.5" />
+            For Technical Audiences
+          </div>
+          <h2 className="text-4xl sm:text-5xl font-black text-slate-100 mb-4">
+            "Why Not Just Use
+            <span className="gradient-text"> Grammarly?"</span>
+          </h2>
+          <p className="text-slate-400 max-w-2xl mx-auto">
+            Fair question. Here's how Invisible Mentors compares to every alternative
+            you might already be thinking of.
+          </p>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          transition={{ delay: 0.1 }}
+          className="rounded-2xl overflow-hidden border border-slate-700/30"
+        >
+          {/* Header */}
+          <div className="grid bg-slate-900/80 border-b border-slate-700/30"
+            style={{ gridTemplateColumns: "1fr repeat(5, minmax(80px, 120px))" }}>
+            <div className="p-4 text-slate-500 text-xs font-semibold uppercase tracking-wider">Feature</div>
+            {columns.map((c) => (
+              <div key={c.key} className={`p-3 text-center border-l border-slate-700/20 ${c.highlight ? "bg-blue-500/8" : ""}`}>
+                <span className="text-xs font-bold whitespace-pre-line leading-tight"
+                  style={{ color: c.highlight ? c.color : "#64748b" }}>{c.label}</span>
+                {c.highlight && <div className="w-1 h-1 rounded-full bg-blue-400 mx-auto mt-1" />}
+              </div>
+            ))}
+          </div>
+
+          {/* Rows */}
+          {rows.map((row, i) => (
+            <motion.div
+              key={row.feature}
+              initial={{ opacity: 0, x: -10 }}
+              animate={inView ? { opacity: 1, x: 0 } : {}}
+              transition={{ delay: 0.05 + i * 0.05 }}
+              className={`grid border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors ${i % 2 === 0 ? "bg-slate-900/20" : ""}`}
+              style={{ gridTemplateColumns: "1fr repeat(5, minmax(80px, 120px))" }}
+            >
+              <div className="p-4 text-slate-400 text-sm flex items-center">{row.feature}</div>
+              {columns.map((c) => (
+                <div key={c.key} className={`p-4 flex items-center justify-center border-l border-slate-800/40 ${c.highlight ? "bg-blue-500/5" : ""}`}>
+                  <Cell v={row[c.key as keyof typeof row] as boolean | string} />
+                </div>
+              ))}
+            </motion.div>
+          ))}
+
+          {/* Footer note */}
+          <div className="p-4 bg-slate-900/60 text-center">
+            <p className="text-xs text-slate-600">
+              Invisible Mentors is the only tool that combines custom jargon rules, AI rewrites, and automatic GitHub PR comments — for free.
+            </p>
+          </div>
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
 function TechStack() {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-80px" });
@@ -3305,6 +3665,7 @@ export default function App() {
     <div className="min-h-screen bg-navy-950">
       <Nav />
       <Hero />
+      <AnalogySplash />
       <Problem />
       <SpeedTheater />
       <HowItWorks />
@@ -3312,7 +3673,9 @@ export default function App() {
       <BeforeAfter />
       <JargonDetector />
       <Impact />
+      <ROICalculator />
       <AudiencePoll />
+      <WhyUs />
       <TechStack />
       <Conference />
       <Footer />
