@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence, useInView } from "framer-motion";
-import confetti from "canvas-confetti";
+
 import { QRCodeSVG } from "qrcode.react";
 import {
   Github, ExternalLink, ChevronDown, Check, X,
@@ -8,9 +8,9 @@ import {
   Clock, Users, TrendingUp, Code2, FileText, Terminal,
   ArrowRight, Play, RotateCcw, AlertCircle, Sparkles,
   DollarSign, Calculator, BookOpen, BarChart3, Award, Building2, Infinity,
-  ThumbsUp, ThumbsDown, Star, MessageSquare, Trophy, Timer,
-  Heart, Mic, Link, Mail, Copy, ChevronRight, Wand2, ScanText, PartyPopper,
-  Maximize2, Minimize2, Gauge, SmilePlus
+  ThumbsUp, ThumbsDown, Star, Trophy, Timer,
+  Heart, Mic, Link, Mail, Copy, ChevronRight, Wand2, ScanText,
+  Maximize2, Minimize2, Gauge
 } from "lucide-react";
 
 type DemoState = "idle" | "scanning" | "flagged" | "analyzing" | "complete";
@@ -154,7 +154,6 @@ function JargonMeter({ text }: { text: string }) {
   const score = Math.min(100, Math.round(raw));
   const label = score === 0 ? "Crystal Clear" : score < 15 ? "Mostly Clean" : score < 40 ? "Getting Jargon-y" : score < 70 ? "Heavy Jargon" : "Jargon Overload";
   const color = score === 0 ? "#22c55e" : score < 15 ? "#86efac" : score < 40 ? "#f59e0b" : score < 70 ? "#f97316" : "#ef4444";
-  const emoji = score === 0 ? "✅" : score < 15 ? "🟡" : score < 40 ? "⚠️" : score < 70 ? "🔴" : "💀";
   return (
     <div className="mt-3 rounded-xl border border-slate-700/40 bg-slate-900/50 p-3">
       <div className="flex items-center justify-between mb-2">
@@ -162,7 +161,7 @@ function JargonMeter({ text }: { text: string }) {
           <Gauge className="w-3.5 h-3.5 text-slate-500" />
           <span className="text-[11px] text-slate-500 font-mono uppercase tracking-widest">Live Jargon Score</span>
         </div>
-        <span className="text-xs font-black font-mono" style={{ color }}>{emoji} {label}</span>
+        <span className="text-xs font-black font-mono" style={{ color }}>{label}</span>
       </div>
       <div className="relative h-2.5 bg-slate-800 rounded-full overflow-hidden">
         <motion.div
@@ -727,21 +726,18 @@ function AnalogySplash() {
 
   const analogies = [
     {
-      icon: "✍️",
       role: "The New Intern",
-      without: "Submits a report full of buzzwords. Boss returns it 4 days later with one line: 'rewrite this.'",
-      with: "Gets a friendly note 30 seconds after submitting: 'Try \u201Cuse\u201D instead of \u201Cutilize\u201D.' Fixes it. Done.",
+      without: "Submits a report full of buzzwords. Manager returns it 4 days later with one line: 'rewrite this.'",
+      with: "Gets a clear note 30 seconds after submitting: 'Try \"use\" instead of \"utilize\".' Fixes it. Done.",
       color: "#3b82f6",
     },
     {
-      icon: "📋",
       role: "The Hiring Manager",
-      without: "Reads 40 resumes. Half are jargon soup. Hours lost on back-and-forth.",
+      without: "Reads 40 resumes. Half are jargon soup. Hours lost on back-and-forth clarifications.",
       with: "Every resume is auto-flagged for unclear language before it lands in the inbox. Only plain writing gets through.",
       color: "#a855f7",
     },
     {
-      icon: "🏗️",
       role: "The Construction Foreman",
       without: "New crew members submit progress reports nobody understands. Meetings called to clarify.",
       with: "Reports are automatically checked against plain-English standards before the foreman sees them.",
@@ -781,7 +777,6 @@ function AnalogySplash() {
           transition={{ delay: 0.15 }}
           className="card-glass rounded-2xl border border-blue-500/15 p-8 mb-8 text-center"
         >
-          <div className="text-6xl mb-4">🧑‍💼</div>
           <h3 className="text-2xl font-black text-slate-100 mb-3">
             Like Autocorrect — But for Professional Writing
           </h3>
@@ -792,19 +787,19 @@ function AnalogySplash() {
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-sm">
             {[
-              { label: "Someone writes a document", icon: "📝" },
+              { label: "Document submitted", Icon: FileText },
               { label: "→", plain: true },
-              { label: "Invisible Mentors checks it instantly", icon: "🤖" },
+              { label: "Invisible Mentors scans it", Icon: Bot },
               { label: "→", plain: true },
-              { label: "Plain-English rewrite suggested", icon: "✅" },
+              { label: "Plain-English rewrite suggested", Icon: Check },
               { label: "→", plain: true },
-              { label: "Reviewer sees only clear writing", icon: "🎉" },
+              { label: "Reviewer sees only clear writing", Icon: Users },
             ].map((step, i) =>
               step.plain ? (
                 <span key={i} className="text-slate-600 text-lg font-bold hidden sm:block">→</span>
               ) : (
                 <div key={i} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800/60 border border-slate-700/40">
-                  <span className="text-xl">{step.icon}</span>
+                  {step.Icon && <step.Icon className="w-4 h-4 text-blue-400 shrink-0" />}
                   <span className="text-slate-300 font-medium">{step.label}</span>
                 </div>
               )
@@ -823,7 +818,6 @@ function AnalogySplash() {
               className="card-glass rounded-2xl border p-6"
               style={{ borderColor: `${a.color}25` }}
             >
-              <div className="text-3xl mb-3">{a.icon}</div>
               <h4 className="text-slate-100 font-bold text-base mb-4">{a.role}</h4>
               <div className="space-y-3">
                 <div className="bg-red-500/8 border border-red-500/15 rounded-xl p-3">
@@ -922,7 +916,7 @@ const PIPELINE_SEQUENCE = [
   { stateId: "comment", nodeId: "comment", timing: "0:12", label: "Comment Posted",   color: "#14b8a6", actionStep: 5 },
   { stateId: "fix",     nodeId: "fix",     timing: "0:25", label: "Contributor Fix",  color: "#f59e0b", actionStep: 0 },
   { stateId: "rescan",  nodeId: "vale",    timing: "0:28", label: "Re-scanning…",     color: "#22c55e", actionStep: 4 },
-  { stateId: "deploy",  nodeId: "deploy",  timing: "0:45", label: "Deployed! 🚀",     color: "#22c55e", actionStep: 6 },
+  { stateId: "deploy",  nodeId: "deploy",  timing: "0:45", label: "Deployed",          color: "#22c55e", actionStep: 6 },
 ];
 
 const ACTION_STEPS = [
@@ -1107,7 +1101,7 @@ function HowItWorks() {
                   <PipelineNode {...nodes[1]} active={activeNode === "vale"} done={doneNodes.has("vale")} onClick={() => setManualNode("vale")} />
                   <FlowConnector active={seq.stateId === "rescan" || seq.stateId === "deploy"} color="#22c55e" />
                   <div className="flex flex-col items-center">
-                    <div className="text-[9px] text-green-500/70 font-mono mb-1">✅ clean</div>
+                    <div className="text-[9px] text-green-500/70 font-mono mb-1">passed</div>
                     <PipelineNode {...nodes[5]} active={activeNode === "deploy"} done={doneNodes.has("deploy")} onClick={() => setManualNode("deploy")} />
                   </div>
                 </div>
@@ -1116,7 +1110,7 @@ function HowItWorks() {
                 <div className="flex items-start ml-[108px] gap-1">
                   <div className="flex flex-col items-center mt-0">
                     <div className="w-0.5 h-5 bg-red-500/40" />
-                    <div className="text-[9px] text-red-400/70 font-mono">⚠️ jargon</div>
+                    <div className="text-[9px] text-red-400/70 font-mono">jargon</div>
                   </div>
                 </div>
 
@@ -1147,13 +1141,13 @@ function HowItWorks() {
               {/* Timing markers */}
               <div className="grid grid-cols-4 gap-3 mt-5">
                 {[
-                  { icon: "⚡", val: "< 1s", label: "PR → pipeline trigger" },
-                  { icon: "🔍", val: "~3s", label: "Vale full scan" },
-                  { icon: "🤖", val: "~8s", label: "Gemini rewrite" },
-                  { icon: "🚀", val: "~2s", label: "Docs deploy" },
+                  { Icon: Zap,           val: "< 1s", label: "PR triggers pipeline" },
+                  { Icon: Shield,        val: "~3s",  label: "Vale full scan" },
+                  { Icon: Bot,           val: "~8s",  label: "Gemini rewrite" },
+                  { Icon: Rocket,        val: "~2s",  label: "Docs deploy" },
                 ].map(m => (
                   <div key={m.label} className="rounded-xl bg-white/3 border border-white/5 p-3 text-center">
-                    <div className="text-lg mb-1">{m.icon}</div>
+                    <m.Icon className="w-4 h-4 text-blue-400 mx-auto mb-1.5" />
                     <div className="text-slate-200 font-black text-sm font-mono">{m.val}</div>
                     <div className="text-slate-600 text-[10px] mt-0.5 leading-tight">{m.label}</div>
                   </div>
@@ -1345,7 +1339,7 @@ on: { push: { branches: [main] } }
         if: steps.vale_check.outcome == 'failure'
         env: { GEMINI_API_KEY: \${{ secrets.GEMINI_API_KEY }} }
         run: python ai_mentor.py --table --file docs/onboarding.md
-      - name: ✨ Gemini 2.5 Flash
+      - name: Gemini 2.5 Flash
         run: |  # Sends flagged text → gets structured rewrite
           # → Posts as sticky PR comment automatically
       - name: Deploy Docs to GitHub Pages
@@ -1497,7 +1491,7 @@ function UnderTheHood({ state }: { state: DemoState }) {
                 <span className="ml-auto px-2 py-0.5 rounded-full bg-green-900/60 border border-green-500/30 text-green-400 text-[10px] font-mono">0 human reviews</span>
               </div>
               <div className="p-3 font-mono text-xs text-slate-400 space-y-1">
-                <div className="text-blue-400 font-semibold">## 🤖 Invisible Mentor — Jargon Audit</div>
+                <div className="text-blue-400 font-semibold">## Invisible Mentor — Jargon Audit</div>
                 <div className="text-slate-500">| # | Phrase | Suggested | Reason |</div>
                 <div className="text-slate-600">|---|--------|-----------|--------|</div>
                 <div><span className="text-slate-500">| 1 | </span><span className="text-red-400">utilize</span><span className="text-slate-500"> | </span><span className="text-green-400">use</span><span className="text-slate-500"> | Adds syllables without meaning |</span></div>
@@ -1535,10 +1529,6 @@ function LiveDemo() {
     setState("analyzing");
     await new Promise(r => setTimeout(r, 2200));
     setState("complete");
-    // 🎉 Celebrate!
-    confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 }, colors: ["#3b82f6","#22c55e","#a855f7","#f59e0b","#14b8a6"] });
-    setTimeout(() => confetti({ particleCount: 60, spread: 120, origin: { y: 0.55, x: 0.3 }, angle: 60 }), 300);
-    setTimeout(() => confetti({ particleCount: 60, spread: 120, origin: { y: 0.55, x: 0.7 }, angle: 120 }), 500);
   };
 
   const reset = () => {
@@ -1762,19 +1752,9 @@ function LiveDemo() {
                     </div>
                   </div>
 
-                  {/* GitHub-style reaction bar */}
+                  {/* Comment footer */}
                   <div className="flex items-center gap-2 px-4 py-2.5 border-t border-[#30363d]" style={{ background: "#161b22" }}>
-                    <div className="flex items-center gap-1.5">
-                      {["👍", "🎉", "❤️"].map(emoji => (
-                        <button key={emoji} className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border border-[#30363d] text-[#8b949e] hover:border-[#58a6ff] hover:text-[#58a6ff] transition-colors" style={{ background: "#21262d" }}>
-                          {emoji} <span className="text-[10px]">1</span>
-                        </button>
-                      ))}
-                      <button className="px-2 py-0.5 rounded-full text-xs border border-[#30363d] text-[#8b949e] hover:border-[#58a6ff] hover:text-[#58a6ff] transition-colors" style={{ background: "#21262d" }}>
-                        + 😄
-                      </button>
-                    </div>
-                    <span className="ml-auto text-[10px] text-[#8b949e] font-mono">0 human reviews · Posted in 25s</span>
+                    <span className="text-[10px] text-[#8b949e] font-mono">0 human reviews required · Posted automatically in 25s</span>
                   </div>
                 </motion.div>
               )}
@@ -1890,19 +1870,19 @@ function LiveDemo() {
 }
 
 const INDUSTRY_PRESETS = [
-  { id: "oss",        label: "🌐 Open Source",   contributors: 15,  prs: 30,  rate: 85,  mins: 45, note: "High contributor churn. Fast feedback retains contributors before they give up." },
-  { id: "fintech",    label: "💳 Fintech",        contributors: 20,  prs: 50,  rate: 145, mins: 60, note: "Regulatory compliance demands precision. Every word in docs can be a legal liability." },
-  { id: "healthcare", label: "🏥 Healthcare IT",  contributors: 12,  prs: 25,  rate: 120, mins: 55, note: "HIPAA & FDA docs require airtight language. Jargon in docs creates compliance risk." },
-  { id: "gov",        label: "🏛️ Government",     contributors: 10,  prs: 15,  rate: 90,  mins: 50, note: "FedRAMP and public sector mandates require clear, audit-ready documentation." },
-  { id: "startup",    label: "🚀 SaaS Startup",   contributors: 25,  prs: 60,  rate: 110, mins: 35, note: "Moving fast. Every hour saved on review is an hour toward shipping product." },
-  { id: "enterprise", label: "🏢 Enterprise",     contributors: 50,  prs: 120, rate: 125, mins: 60, note: "Large orgs spend $M/year on doc review cycles. Scale makes the ROI enormous." },
+  { id: "oss",        label: "Open Source",   contributors: 15,  prs: 30,  rate: 85,  mins: 45, note: "High contributor churn. Fast feedback retains contributors before they give up." },
+  { id: "fintech",    label: "Fintech",        contributors: 20,  prs: 50,  rate: 145, mins: 60, note: "Regulatory compliance demands precision. Every word in docs can be a legal liability." },
+  { id: "healthcare", label: "Healthcare IT",  contributors: 12,  prs: 25,  rate: 120, mins: 55, note: "HIPAA & FDA docs require airtight language. Jargon in docs creates compliance risk." },
+  { id: "gov",        label: "Government",     contributors: 10,  prs: 15,  rate: 90,  mins: 50, note: "FedRAMP and public sector mandates require clear, audit-ready documentation." },
+  { id: "startup",    label: "SaaS Startup",   contributors: 25,  prs: 60,  rate: 110, mins: 35, note: "Moving fast. Every hour saved on review is an hour toward shipping product." },
+  { id: "enterprise", label: "Enterprise",     contributors: 50,  prs: 120, rate: 125, mins: 60, note: "Large orgs spend $M/year on doc review cycles. Scale makes the ROI enormous." },
 ];
 
 const ALTERNATIVES = [
-  { name: "Manual Review", emoji: "👤", setup: "$0", monthly: "Your dev time", speed: "22 hrs avg", scales: false, audit: false, oss: null, highlight: false },
-  { name: "Tech Writer Hire", emoji: "✍️", setup: "$30K+", monthly: "$8,500/mo", speed: "2–3 days", scales: false, audit: "Partial", oss: null, highlight: false },
-  { name: "Commercial Bot", emoji: "🤖", setup: "$0", monthly: "$49–$299/mo", speed: "~5 min", scales: true, audit: true, oss: false, highlight: false },
-  { name: "Invisible Mentors", emoji: "✨", setup: "$0", monthly: "$0 forever", speed: "< 30 sec", scales: true, audit: true, oss: true, highlight: true },
+  { name: "Manual Review",    setup: "$0",    monthly: "Your dev time",  speed: "22 hrs avg", scales: false, audit: false,      oss: null,  highlight: false },
+  { name: "Tech Writer Hire", setup: "$30K+", monthly: "$8,500/mo",      speed: "2–3 days",   scales: false, audit: "Partial",  oss: null,  highlight: false },
+  { name: "Commercial Bot",   setup: "$0",    monthly: "$49–$299/mo",    speed: "~5 min",     scales: true,  audit: true,       oss: false, highlight: false },
+  { name: "Invisible Mentors",setup: "$0",    monthly: "$0 forever",     speed: "< 30 sec",   scales: true,  audit: true,       oss: true,  highlight: true  },
 ];
 
 const INDUSTRY_REFS = [
@@ -2131,7 +2111,7 @@ function Impact() {
                       exit={{ opacity: 0 }}
                       className="text-slate-500 text-xs mt-2 italic"
                     >
-                      💡 {activePreset.note}
+                      {activePreset.note}
                     </motion.p>
                   )}
                 </AnimatePresence>
@@ -2139,25 +2119,25 @@ function Impact() {
 
               <div className="space-y-6 pt-1">
                 <SliderInput
-                  label="👥 Contributors submitting PRs"
+                  label="Contributors submitting PRs"
                   value={contributors} min={1} max={100} step={1} color="blue"
                   format={v => `${v} devs`}
                   onChange={setContributors}
                 />
                 <SliderInput
-                  label="📋 Pull requests per month"
+                  label="Pull requests per month"
                   value={prsPerMonth} min={5} max={200} step={5} color="teal"
                   format={v => `${v} PRs`}
                   onChange={setPrsPerMonth}
                 />
                 <SliderInput
-                  label="💰 Senior dev hourly rate (fully loaded)"
+                  label="Senior dev hourly rate (fully loaded)"
                   value={hourlyRate} min={40} max={250} step={5} color="amber"
                   format={v => `$${v}/hr`}
                   onChange={setHourlyRate}
                 />
                 <SliderInput
-                  label="⏱️ Avg. minutes per PR for manual review"
+                  label="Avg. minutes per PR for manual review"
                   value={reviewMins} min={10} max={120} step={5} color="green"
                   format={v => `${v} min`}
                   onChange={setReviewMins}
@@ -2309,7 +2289,6 @@ function Impact() {
                   >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
-                        <span className="text-base">{a.emoji}</span>
                         <span className={`font-semibold ${a.highlight ? "text-green-300" : "text-slate-300"}`}>{a.name}</span>
                         {a.highlight && <span className="ml-1 text-[10px] px-2 py-0.5 rounded-full bg-green-500/20 border border-green-500/30 text-green-400 font-mono">this tool</span>}
                       </div>
@@ -2317,9 +2296,9 @@ function Impact() {
                     <td className={`px-4 py-4 text-center font-mono text-xs ${a.highlight ? "text-green-400 font-bold" : "text-slate-400"}`}>{a.setup}</td>
                     <td className={`px-4 py-4 text-center font-mono text-xs ${a.highlight ? "text-green-400 font-bold" : "text-slate-400"}`}>{a.monthly}</td>
                     <td className={`px-4 py-4 text-center font-mono text-xs ${a.highlight ? "text-green-400 font-bold" : "text-slate-400"}`}>{a.speed}</td>
-                    <td className="px-4 py-4 text-center text-base">{a.scales === true ? "✅" : a.scales === false ? "❌" : "—"}</td>
-                    <td className="px-4 py-4 text-center text-base">{a.audit === true ? "✅" : a.audit === false ? "❌" : typeof a.audit === "string" ? <span className="text-amber-400 text-xs">{a.audit}</span> : "—"}</td>
-                    <td className="px-4 py-4 text-center text-base">{a.oss === true ? "✅" : a.oss === false ? "❌" : <span className="text-slate-600 text-xs">N/A</span>}</td>
+                    <td className="px-4 py-4 text-center">{a.scales === true ? <Check className="w-4 h-4 text-green-400 mx-auto" /> : a.scales === false ? <X className="w-4 h-4 text-red-400 mx-auto" /> : <span className="text-slate-600">—</span>}</td>
+                    <td className="px-4 py-4 text-center">{a.audit === true ? <Check className="w-4 h-4 text-green-400 mx-auto" /> : a.audit === false ? <X className="w-4 h-4 text-red-400 mx-auto" /> : typeof a.audit === "string" ? <span className="text-amber-400 text-xs">{a.audit}</span> : <span className="text-slate-600">—</span>}</td>
+                    <td className="px-4 py-4 text-center">{a.oss === true ? <Check className="w-4 h-4 text-green-400 mx-auto" /> : a.oss === false ? <X className="w-4 h-4 text-red-400 mx-auto" /> : <span className="text-slate-600 text-xs">N/A</span>}</td>
                   </tr>
                 ))}
               </tbody>
@@ -3009,21 +2988,65 @@ function PolicyAsCode() {
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
-          className="text-center mb-20"
+          className="text-center mb-14"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-sm font-semibold mb-6 tracking-wide uppercase">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-sm font-semibold mb-8 tracking-wide uppercase">
             <Terminal className="w-3.5 h-3.5" />
-            Engineering Practices
+            Engineering Discipline
           </div>
-          <h2 className="text-5xl sm:text-6xl font-black text-slate-100 mb-5 leading-none tracking-tight">
-            Built on what modern
-            <br />
-            <span className="gradient-text">engineering already knows.</span>
-          </h2>
-          <p className="text-slate-400 text-lg max-w-2xl mx-auto leading-relaxed">
-            Policy as Code. Shift Left. Docs as Code. GitOps. AI-augmented pipelines.
-            None of these are new ideas. Invisible Mentors applies them to the one part
-            of the stack that has never had them: documentation quality.
+
+          {/* Pull-quote: the "aha" moment */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.97 }}
+            animate={inView ? { opacity: 1, scale: 1 } : {}}
+            transition={{ delay: 0.1, duration: 0.5 }}
+            className="max-w-4xl mx-auto mb-10"
+          >
+            <h2 className="text-5xl sm:text-7xl font-black text-slate-100 leading-none tracking-tight mb-2">
+              <span className="inline-block bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 bg-clip-text text-transparent">
+                Policy as Code
+              </span>
+            </h2>
+            <h2 className="text-4xl sm:text-5xl font-black text-slate-300 leading-tight tracking-tight mb-6">
+              for documentation.
+            </h2>
+            <p className="text-slate-400 text-lg max-w-2xl mx-auto leading-relaxed">
+              The same enforcement discipline that governs APIs, infrastructure, and Kubernetes manifests —
+              applied to the one part of the stack that has never had it: writing quality.
+            </p>
+          </motion.div>
+
+          {/* Three-column analogy strip */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={inView ? { opacity: 1, y: 0 } : {}}
+            transition={{ delay: 0.25 }}
+            className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto mb-4"
+          >
+            {[
+              { label: "Open Policy Agent",     controls: "what API calls are permitted" },
+              { label: "Sentinel (HashiCorp)",   controls: "what infrastructure can deploy" },
+              { label: "Invisible Mentors",      controls: "what writing can be merged", highlight: true },
+            ].map(item => (
+              <div
+                key={item.label}
+                className={`rounded-xl border px-4 py-3 text-left ${
+                  item.highlight
+                    ? "border-cyan-500/40 bg-cyan-500/8"
+                    : "border-slate-700/40 bg-slate-800/30"
+                }`}
+              >
+                <div className={`text-xs font-bold mb-1 ${item.highlight ? "text-cyan-400" : "text-slate-400"}`}>
+                  {item.label}
+                </div>
+                <div className="text-slate-500 text-xs leading-snug">
+                  Controls {item.controls}
+                </div>
+              </div>
+            ))}
+          </motion.div>
+          <p className="text-slate-600 text-xs tracking-widest uppercase font-semibold">
+            Same discipline. New domain.
           </p>
         </motion.div>
 
@@ -3676,7 +3699,7 @@ function JargonDetector() {
               )}
               {scanned && results.length === 0 && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-36 flex flex-col items-center justify-center gap-2">
-                  <div className="text-4xl">✅</div>
+                  <Check className="w-8 h-8 text-green-400" />
                   <div className="text-green-400 font-bold text-sm">Vale exit 0 — Writing is clean!</div>
                   <div className="text-slate-600 text-xs font-mono">0 errors in 1 file</div>
                 </motion.div>
@@ -4084,7 +4107,6 @@ function AudiencePoll() {
   const vote = (which: "yes" | "no") => {
     setVotes(prev => ({ ...prev, [q.id]: { ...prev[q.id], [which]: prev[q.id][which] + 1 } }));
     setRevealed(prev => new Set(prev).add(q.id));
-    if (which === "yes") confetti({ particleCount: 40, spread: 60, origin: { y: 0.7 }, colors: ["#22c55e","#3b82f6"] });
   };
 
   const yPct = total > 0 ? Math.round((v.yes / total) * 100) : 0;
@@ -4374,18 +4396,16 @@ export default function App() {
     <div className="min-h-screen bg-navy-950">
       <Nav />
       <Hero />
-      <AnalogySplash />
       <Problem />
-      <SpeedTheater />
+      <Impact />
+      <AnalogySplash />
+      <PolicyAsCode />
       <HowItWorks />
+      <SpeedTheater />
       <LiveDemo />
       <BeforeAfter />
-      <JargonDetector />
-      <Impact />
       <ROICalculator />
-      <AudiencePoll />
       <WhyUs />
-      <PolicyAsCode />
       <TechStack />
       <Conference />
       <Footer />
