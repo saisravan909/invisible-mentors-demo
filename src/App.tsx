@@ -2862,6 +2862,439 @@ function WhyUs() {
   );
 }
 
+// ─────────────────────────────────────────────
+// POLICY AS CODE + ADVANCED PRACTICES SECTION
+// ─────────────────────────────────────────────
+function PolicyAsCode() {
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true, margin: "-60px" });
+  const [activeTab, setActiveTab] = useState(0);
+
+  const policyFile = [
+    "# .vale/styles/Jargon/jargon.yml",
+    "extends: existence",
+    'message: "\'%s\' is jargon. Use plain English instead."',
+    "level: error",
+    "tokens:",
+    "  - utilize",
+    "  - leverage",
+    "  - paradigm",
+    "  - synergize",
+    "  - best practices",
+    "  - going forward",
+    "  - circle back",
+  ];
+
+  const shiftLeftSteps = [
+    { label: "Write docs",   sub: "Contributor drafts", phase: "before", col: "#334155" },
+    { label: "Open PR",      sub: "Pipeline triggers",  phase: "gate",   col: "#3b82f6" },
+    { label: "Review",       sub: "Automated — 25 sec", phase: "gate",   col: "#3b82f6" },
+    { label: "Merge",        sub: "Clean writing only",  phase: "after",  col: "#334155" },
+    { label: "Deploy",       sub: "MkDocs publishes",   phase: "after",  col: "#334155" },
+  ];
+
+  const concepts = [
+    {
+      id: 0,
+      tag: "Policy as Code",
+      title: "Your writing standard is a file in the repo",
+      accent: "#3b82f6",
+      border: "rgba(59,130,246,0.2)",
+      icon: FileText,
+      body: [
+        "The Vale configuration is not a document — it is executable policy. Just as Open Policy Agent defines what is allowed in your infrastructure, and Sentinel defines what Terraform plans can be approved, the jargon ruleset defines what writing can be merged.",
+        "The policy lives in version control. Changes to it go through pull requests. Every edit is reviewed, audited, and reversible. The same practices that govern your code now govern your communication standards.",
+        "This is precisely the definition of Policy as Code: machine-readable rules that enforce organizational standards automatically, at the point of change, with no human required to remember to check.",
+      ],
+      compare: [
+        { label: "Open Policy Agent", use: "Controls what API calls are permitted" },
+        { label: "Sentinel (HashiCorp)", use: "Controls what infrastructure changes can deploy" },
+        { label: "Conftest", use: "Controls what Kubernetes manifests can be applied" },
+        { label: "Invisible Mentors / Vale", use: "Controls what writing can be merged" },
+      ],
+    },
+    {
+      id: 1,
+      tag: "Shift Left",
+      title: "Fix it the moment it is written, not days later",
+      accent: "#10b981",
+      border: "rgba(16,185,129,0.2)",
+      icon: ArrowRight,
+      body: [
+        "Shift Left is the principle of moving quality checks earlier in the software delivery lifecycle. In traditional development, testing happened at the end — after the code was written, integrated, and staged. The cost of fixing bugs found late is an order of magnitude higher than catching them early.",
+        "Documentation has historically been the last thing checked. A maintainer reads the PR days after it was opened. Invisible Mentors shifts that check to the moment the PR is created — automatically, with no human involvement required.",
+        "The result is that the contributor receives feedback while the context is still fresh. The cost of correction drops to near zero. The feedback loop that used to take 4 days now closes in 25 seconds.",
+      ],
+      compare: [
+        { label: "Security scanning", use: "SAST/DAST tools shifted into CI from penetration testing" },
+        { label: "Dependency audits", use: "npm audit, Dependabot — runs on every PR" },
+        { label: "Code formatting", use: "Prettier, ESLint — run on every commit" },
+        { label: "Writing quality", use: "Invisible Mentors — runs on every PR (now)" },
+      ],
+    },
+    {
+      id: 2,
+      tag: "Docs as Code",
+      title: "Documentation is software. Treat it that way.",
+      accent: "#a855f7",
+      border: "rgba(168,85,247,0.2)",
+      icon: GitPullRequest,
+      body: [
+        "Docs as Code is the practice of applying software engineering discipline to documentation: version control, pull requests, automated testing, continuous deployment, and peer review. The documentation lives in the same repository as the code that it describes.",
+        "Invisible Mentors extends this discipline with automated quality enforcement. The documentation does not just go through a pull request — the pull request is gated on writing quality. The CI pipeline is the reviewer.",
+        "This means documentation quality is now auditable, reproducible, and measurable — exactly like test coverage or type safety. You can see the history of every policy change. You can roll back a bad rule. You can propose a new standard through a PR.",
+      ],
+      compare: [
+        { label: "Code review", use: "Automated via linters, static analysis, CI" },
+        { label: "Code testing", use: "Automated via unit tests, integration tests" },
+        { label: "Code formatting", use: "Automated via formatters on every commit" },
+        { label: "Docs quality", use: "Automated via Invisible Mentors on every PR" },
+      ],
+    },
+    {
+      id: 3,
+      tag: "AI in the Loop",
+      title: "The AI is a pipeline step, not a product",
+      accent: "#f59e0b",
+      border: "rgba(245,158,11,0.2)",
+      icon: Bot,
+      body: [
+        "Most AI writing tools are products — you open them, paste your text, and get output. They live outside the development workflow. Using them is optional. Invisible Mentors treats the AI as a pipeline step, the same way you would treat a linter or a test runner.",
+        "Gemini 2.5 Flash is invoked by the CI system, receives structured input (the flagged passages and surrounding context), and returns structured output (a rewrite table). The model has no memory, no state, no interface. It is a function call in a pipeline.",
+        "This architecture means the AI scales with your contributor volume at zero marginal cost, runs consistently on every PR without human intervention, and can be replaced with any model — local or cloud — by changing one environment variable.",
+      ],
+      compare: [
+        { label: "Copilot", use: "Code suggestions in the editor — human decides when to invoke" },
+        { label: "ChatGPT", use: "Conversational — requires human to copy, paste, and interpret" },
+        { label: "Grammarly", use: "Browser extension — human must open the document in the right tool" },
+        { label: "Invisible Mentors", use: "CI pipeline step — invoked automatically, output structured" },
+      ],
+    },
+    {
+      id: 4,
+      tag: "GitOps",
+      title: "The repo is the source of truth for everything",
+      accent: "#06b6d4",
+      border: "rgba(6,182,212,0.2)",
+      icon: Github,
+      body: [
+        "GitOps is the practice of using a Git repository as the single source of truth for both the application and its operational configuration. Changes are applied through pull requests, not through manual commands or UI interactions. The desired state is always described in code.",
+        "Invisible Mentors applies GitOps to writing standards. The jargon policy, the CI configuration, the MkDocs theme settings — all of it lives in the repository. Changing the writing standard means opening a PR. The change is reviewed, discussed, approved, and then applied automatically.",
+        "This gives you something no traditional documentation review process has: a full audit trail. You can answer the question 'when did we decide that leverage is jargon, and who approved it?' by looking at git log.",
+      ],
+      compare: [
+        { label: "Flux / ArgoCD", use: "GitOps for Kubernetes — repo describes desired cluster state" },
+        { label: "Terraform", use: "GitOps for infrastructure — repo describes desired cloud state" },
+        { label: "Ansible", use: "GitOps for configuration — repo describes desired server state" },
+        { label: "Invisible Mentors", use: "GitOps for writing — repo describes desired language standard" },
+      ],
+    },
+  ];
+
+  const active = concepts[activeTab];
+
+  return (
+    <section ref={ref} className="py-28 relative overflow-hidden" id="practices">
+      <div className="absolute inset-0 grid-bg opacity-15 pointer-events-none" />
+      {/* Ambient glow behind active concept */}
+      <motion.div
+        className="absolute inset-0 pointer-events-none"
+        animate={{ background: `radial-gradient(ellipse 60% 40% at 50% 50%, ${active.accent}06, transparent 70%)` }}
+        transition={{ duration: 0.6 }}
+      />
+
+      <div className="max-w-6xl mx-auto px-6 relative">
+
+        {/* ── Header ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          className="text-center mb-20"
+        >
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-sm font-semibold mb-6 tracking-wide uppercase">
+            <Terminal className="w-3.5 h-3.5" />
+            Engineering Practices
+          </div>
+          <h2 className="text-5xl sm:text-6xl font-black text-slate-100 mb-5 leading-none tracking-tight">
+            Built on what modern
+            <br />
+            <span className="gradient-text">engineering already knows.</span>
+          </h2>
+          <p className="text-slate-400 text-lg max-w-2xl mx-auto leading-relaxed">
+            Policy as Code. Shift Left. Docs as Code. GitOps. AI-augmented pipelines.
+            None of these are new ideas. Invisible Mentors applies them to the one part
+            of the stack that has never had them: documentation quality.
+          </p>
+        </motion.div>
+
+        {/* ── SHIFT LEFT TIMELINE ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          transition={{ delay: 0.1 }}
+          className="mb-16 card-glass rounded-2xl border border-slate-700/30 p-8"
+        >
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h3 className="text-slate-100 font-black text-xl">The Shift Left Timeline</h3>
+              <p className="text-slate-500 text-sm mt-1">Quality enforcement moves left — from post-merge to the moment the PR opens</p>
+            </div>
+            <div className="hidden sm:flex items-center gap-4 text-xs font-semibold">
+              <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-red-500/50" /><span className="text-slate-500">Manual (Days 1–4)</span></div>
+              <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-blue-500" /><span className="text-slate-400">Automated (25 sec)</span></div>
+            </div>
+          </div>
+
+          <div className="relative">
+            {/* Track */}
+            <div className="h-1 rounded-full bg-slate-800 mb-6 relative overflow-hidden">
+              <motion.div
+                className="absolute h-full left-0 rounded-full"
+                initial={{ width: 0 }}
+                animate={inView ? { width: "40%" } : {}}
+                transition={{ delay: 0.4, duration: 1, ease: "easeOut" }}
+                style={{ background: "linear-gradient(to right, #3b82f6, #06b6d4)" }}
+              />
+            </div>
+
+            {/* Steps */}
+            <div className="grid grid-cols-5 gap-2">
+              {shiftLeftSteps.map((step, i) => (
+                <motion.div
+                  key={step.label}
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={inView ? { opacity: 1, y: 0 } : {}}
+                  transition={{ delay: 0.3 + i * 0.1 }}
+                  className="flex flex-col items-center text-center"
+                >
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center mb-2 border"
+                    style={{
+                      background: step.phase === "gate" ? `${step.col}20` : "rgba(30,41,59,0.5)",
+                      borderColor: step.phase === "gate" ? `${step.col}60` : "rgba(255,255,255,0.07)",
+                      boxShadow: step.phase === "gate" ? `0 0 16px ${step.col}30` : "none",
+                    }}
+                  >
+                    <span className="text-[11px] font-black font-mono" style={{ color: step.phase === "gate" ? step.col : "#475569" }}>{i + 1}</span>
+                  </div>
+                  <p className="text-xs font-bold leading-tight mb-0.5" style={{ color: step.phase === "gate" ? "#e2e8f0" : "#475569" }}>{step.label}</p>
+                  <p className="text-[10px] text-slate-600 leading-tight">{step.sub}</p>
+                  {step.phase === "gate" && (
+                    <div className="mt-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider"
+                      style={{ background: `${step.col}15`, color: step.col, border: `1px solid ${step.col}30` }}>
+                      gate
+                    </div>
+                  )}
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Annotation */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={inView ? { opacity: 1 } : {}}
+              transition={{ delay: 1 }}
+              className="mt-6 pt-5 border-t border-slate-800/50 flex flex-col sm:flex-row items-start sm:items-center gap-3 justify-between text-sm"
+            >
+              <div className="flex items-start gap-2.5">
+                <div className="w-5 h-5 rounded-full flex items-center justify-center mt-0.5 flex-shrink-0 bg-red-500/15 border border-red-500/30">
+                  <X className="w-2.5 h-2.5 text-red-400" />
+                </div>
+                <span className="text-slate-500"><span className="text-slate-300 font-semibold">Without IM:</span> A human opens the PR on Day 1, schedules a review, returns feedback on Day 4. The contributor may have moved on.</span>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <div className="w-5 h-5 rounded-full flex items-center justify-center mt-0.5 flex-shrink-0 bg-blue-500/15 border border-blue-500/30">
+                  <Check className="w-2.5 h-2.5 text-blue-400" />
+                </div>
+                <span className="text-slate-500"><span className="text-slate-300 font-semibold">With IM:</span> The check runs the instant the PR opens. The feedback is posted in 25 seconds. The contributor fixes it the same afternoon.</span>
+              </div>
+            </motion.div>
+          </div>
+        </motion.div>
+
+        {/* ── CONCEPT TABS + POLICY CODE ── */}
+        <div className="grid lg:grid-cols-5 gap-6">
+
+          {/* Tab nav */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={inView ? { opacity: 1, x: 0 } : {}}
+            transition={{ delay: 0.2 }}
+            className="lg:col-span-2 flex flex-col gap-2"
+          >
+            {concepts.map((c, i) => (
+              <button
+                key={c.id}
+                onClick={() => setActiveTab(i)}
+                className="text-left rounded-xl px-4 py-4 border transition-all duration-200 cursor-pointer"
+                style={{
+                  background: activeTab === i ? `${c.accent}12` : "rgba(15,23,42,0.4)",
+                  borderColor: activeTab === i ? `${c.accent}40` : "rgba(255,255,255,0.06)",
+                }}
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                    style={{ background: activeTab === i ? `${c.accent}20` : "rgba(30,41,59,0.6)", border: `1px solid ${activeTab === i ? `${c.accent}40` : "rgba(255,255,255,0.06)"}` }}>
+                    <c.icon className="w-3.5 h-3.5" style={{ color: activeTab === i ? c.accent : "#475569" }} />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest mb-0.5" style={{ color: activeTab === i ? c.accent : "#475569" }}>{c.tag}</p>
+                    <p className="text-xs font-semibold leading-snug" style={{ color: activeTab === i ? "#e2e8f0" : "#64748b" }}>{c.title}</p>
+                  </div>
+                </div>
+                {activeTab === i && (
+                  <motion.div className="h-px mt-3 rounded-full" style={{ background: `linear-gradient(to right, ${c.accent}60, transparent)` }}
+                    layoutId="tab-underline" />
+                )}
+              </button>
+            ))}
+          </motion.div>
+
+          {/* Tab content */}
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={inView ? { opacity: 1, x: 0 } : {}}
+            transition={{ delay: 0.25 }}
+            className="lg:col-span-3"
+          >
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTab}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.22 }}
+                className="card-glass rounded-2xl border p-6 h-full flex flex-col gap-5"
+                style={{ borderColor: active.border }}
+              >
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-widest"
+                    style={{ color: active.accent }}>{active.tag}</span>
+                  <h3 className="text-slate-100 font-black text-xl mt-1 leading-snug">{active.title}</h3>
+                </div>
+
+                <div className="space-y-3">
+                  {active.body.map((para, i) => (
+                    <p key={i} className="text-slate-400 text-sm leading-relaxed">{para}</p>
+                  ))}
+                </div>
+
+                {/* Comparison to analogues */}
+                <div className="mt-auto rounded-xl border border-slate-800/50 overflow-hidden">
+                  <div className="px-4 py-2 bg-slate-900/60 border-b border-slate-800/50">
+                    <p className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">Same principle applied across the stack</p>
+                  </div>
+                  {active.compare.map((row) => (
+                    <div key={row.label} className="grid px-4 py-2.5 border-b border-slate-900/50 last:border-0 hover:bg-slate-800/20 transition-colors"
+                      style={{ gridTemplateColumns: "160px 1fr" }}>
+                      <span className="text-xs font-semibold"
+                        style={{ color: row.label.includes("Invisible") ? active.accent : "#64748b" }}>
+                        {row.label}
+                      </span>
+                      <span className="text-xs text-slate-500">{row.use}</span>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            </AnimatePresence>
+          </motion.div>
+        </div>
+
+        {/* ── POLICY CODE BLOCK ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          transition={{ delay: 0.35 }}
+          className="mt-10 grid md:grid-cols-2 gap-6"
+        >
+          {/* The actual policy file */}
+          <div className="card-glass rounded-2xl border border-blue-500/15 overflow-hidden">
+            <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-800/60 bg-slate-950/60">
+              <div className="flex gap-1.5">
+                <div className="w-3 h-3 rounded-full bg-red-500/50" />
+                <div className="w-3 h-3 rounded-full bg-amber-500/50" />
+                <div className="w-3 h-3 rounded-full bg-green-500/50" />
+              </div>
+              <span className="text-xs text-slate-500 font-mono">.vale/styles/Jargon/jargon.yml</span>
+              <span className="ml-auto text-[10px] font-bold text-blue-400 uppercase tracking-wider px-2 py-0.5 rounded border border-blue-500/20 bg-blue-500/10">Policy File</span>
+            </div>
+            <div className="p-4 font-mono text-xs leading-relaxed">
+              {policyFile.map((line, i) => {
+                const isComment = line.startsWith("#");
+                const isKey = line.includes(":") && !line.startsWith("  -");
+                const isVal = line.startsWith("  -");
+                return (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, x: -8 }}
+                    animate={inView ? { opacity: 1, x: 0 } : {}}
+                    transition={{ delay: 0.4 + i * 0.05 }}
+                    className="leading-6"
+                  >
+                    {isComment ? (
+                      <span className="text-slate-600">{line}</span>
+                    ) : isVal ? (
+                      <span>
+                        <span className="text-slate-600">  - </span>
+                        <span className="text-red-400">{line.replace("  - ", "")}</span>
+                      </span>
+                    ) : isKey ? (
+                      <span>
+                        <span className="text-blue-300">{line.split(":")[0]}</span>
+                        <span className="text-slate-500">:</span>
+                        <span className="text-amber-300"> {line.split(":").slice(1).join(":")}</span>
+                      </span>
+                    ) : (
+                      <span className="text-slate-400">{line}</span>
+                    )}
+                  </motion.div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* What makes this Policy as Code */}
+          <div className="flex flex-col gap-4">
+            <div className="card-glass rounded-2xl border border-slate-700/30 p-5">
+              <h4 className="text-slate-100 font-bold text-base mb-3">What makes this Policy as Code</h4>
+              {[
+                { label: "Declarative", body: "You describe what is disallowed, not how to find it. The engine decides the implementation." },
+                { label: "Version-controlled", body: "The policy file lives in git. Every change is tracked, reviewed, and reversible." },
+                { label: "Enforceable", body: "The CI pipeline fails if the policy is violated. Merging around it requires explicit action." },
+                { label: "Auditable", body: "git log shows exactly when each rule was added and who approved it." },
+              ].map((item, i) => (
+                <motion.div
+                  key={item.label}
+                  initial={{ opacity: 0, x: 12 }}
+                  animate={inView ? { opacity: 1, x: 0 } : {}}
+                  transition={{ delay: 0.45 + i * 0.08 }}
+                  className="flex gap-3 py-2.5 border-b border-slate-800/40 last:border-0"
+                >
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-400 mt-1.5 flex-shrink-0" />
+                  <div>
+                    <span className="text-slate-200 text-xs font-bold">{item.label} — </span>
+                    <span className="text-slate-500 text-xs">{item.body}</span>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+
+            <div className="card-glass rounded-2xl border border-slate-700/30 p-5">
+              <p className="text-[10px] text-slate-600 uppercase tracking-wider font-bold mb-3">Industry context</p>
+              <p className="text-slate-400 text-sm leading-relaxed">
+                Open Policy Agent, Sentinel, and Conftest apply Policy as Code to infrastructure and security.
+                Invisible Mentors applies the same principle to the written word — the first tool to do so
+                inside a Git-native, AI-augmented CI pipeline.
+              </p>
+            </div>
+          </div>
+        </motion.div>
+
+      </div>
+    </section>
+  );
+}
+
 function TechStack() {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-80px" });
@@ -3952,6 +4385,7 @@ export default function App() {
       <ROICalculator />
       <AudiencePoll />
       <WhyUs />
+      <PolicyAsCode />
       <TechStack />
       <Conference />
       <Footer />
