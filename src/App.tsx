@@ -10,7 +10,7 @@ import {
   DollarSign, Calculator, BookOpen, BarChart3, Award, Building2, Infinity,
   ThumbsUp, ThumbsDown, Star, Trophy, Timer,
   Heart, Mic, Link, Mail, Copy, ChevronRight, Wand2, ScanText,
-  Maximize2, Minimize2, Gauge
+  Maximize2, Minimize2, Gauge, GitBranch, AlertTriangle
 } from "lucide-react";
 
 type DemoState = "idle" | "scanning" | "flagged" | "analyzing" | "complete";
@@ -3408,6 +3408,421 @@ function WhyUs() {
 }
 
 // ─────────────────────────────────────────────
+// OPTION E — SUBWAY MAP
+// ─────────────────────────────────────────────
+function SubwayMap() {
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true, margin: "-80px" });
+  const [phase, setPhase] = useState(0);
+
+  useEffect(() => {
+    if (!inView) return;
+    const timers = [
+      setTimeout(() => setPhase(1), 200),
+      setTimeout(() => setPhase(2), 1300),
+      setTimeout(() => setPhase(3), 3000),
+      setTimeout(() => setPhase(4), 4400),
+      setTimeout(() => setPhase(5), 5700),
+    ];
+    return () => timers.forEach(clearTimeout);
+  }, [inView]);
+
+  const drawn = phase >= 1;
+  const ciVisible = phase >= 2;
+  const gapShown = phase >= 3;
+  const imVisible = phase >= 4;
+  const imFinal = phase >= 5;
+
+  return (
+    <section ref={ref} className="py-24 relative" id="subway-map">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 relative">
+
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          className="text-center mb-16"
+        >
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-amber-500/30 bg-amber-500/8 text-amber-400 text-xs font-semibold uppercase tracking-widest mb-6">
+            <GitBranch className="w-3.5 h-3.5" />
+            The Structural Gap
+          </div>
+          <h2 className="text-4xl sm:text-5xl font-black text-slate-100 mb-4 leading-tight">
+            Code and infrastructure have{" "}
+            <span className="gradient-text">always had automated gates.</span>
+          </h2>
+          <p className="text-slate-400 text-lg max-w-2xl mx-auto leading-relaxed">
+            Every modern engineering org enforces quality on two of its three tracks automatically.
+            Documentation was the only track left to human judgment alone — until now.
+          </p>
+        </motion.div>
+
+        {/* Map card */}
+        <motion.div
+          initial={{ opacity: 0, y: 36 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          transition={{ delay: 0.15 }}
+          className="rounded-2xl border border-slate-800/70 bg-slate-900/40 backdrop-blur-sm overflow-hidden p-8 sm:p-12"
+        >
+
+          {/* Legend */}
+          <div className="flex flex-wrap justify-center gap-8 mb-12">
+            {[
+              { color: "#3b82f6", label: "Code Line"           },
+              { color: "#22c55e", label: "Infrastructure Line"  },
+              { color: "#f59e0b", label: "Documentation Line"   },
+            ].map(item => (
+              <div key={item.label} className="flex items-center gap-3 text-sm text-slate-400">
+                <div className="flex items-center gap-0.5">
+                  <div className="w-8 h-[3px] rounded-l-full" style={{ background: item.color }} />
+                  <div className="w-3.5 h-3.5 rounded-full border-2 bg-slate-950" style={{ borderColor: item.color }} />
+                  <div className="w-8 h-[3px] rounded-r-full" style={{ background: item.color }} />
+                </div>
+                <span>{item.label}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Column headers */}
+          <div className="flex items-end mb-5 pl-16 sm:pl-20">
+            {["Commit", "PR Opened", "CI / Gates", "Review", "Merge", "Deploy"].map((col, i) => (
+              <div
+                key={col}
+                className={`flex-1 text-center leading-tight ${
+                  i === 2
+                    ? "text-amber-400 font-black text-[10px] sm:text-xs uppercase tracking-widest"
+                    : "text-slate-600 font-semibold text-[9px] sm:text-[10px] uppercase tracking-widest"
+                }`}
+              >
+                {col}
+                {i === 2 && (
+                  <div className="text-[8px] sm:text-[9px] normal-case tracking-normal font-normal text-slate-700 mt-0.5">
+                    where gates run
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* ── Shared station dot helper ── rendered inline for each row */}
+
+          {/* ═══════════════════════════════════
+              CODE LINE (blue)
+          ═══════════════════════════════════ */}
+          <div className="flex items-center mb-10">
+            {/* Row label */}
+            <div className="w-16 sm:w-20 shrink-0 flex justify-end pr-4">
+              <span className="text-blue-400 text-[10px] font-black uppercase tracking-widest">Code</span>
+            </div>
+
+            {/* S0 */}
+            <div className="flex-1 flex justify-center z-10">
+              <motion.div initial={{ scale: 0 }} animate={{ scale: drawn ? 1 : 0 }} transition={{ type: "spring", delay: 0 }}
+                className="w-4 h-4 rounded-full border-[2.5px] bg-slate-950" style={{ borderColor: "#3b82f6" }} />
+            </div>
+            {/* L0→1 */}
+            <motion.div className="flex-[1.5] h-[3px] rounded-full" style={{ background: "#3b82f6" }}
+              initial={{ scaleX: 0, transformOrigin: "left" }} animate={{ scaleX: drawn ? 1 : 0 }} transition={{ duration: 0.4, delay: 0.12 }} />
+            {/* S1 */}
+            <div className="flex-1 flex justify-center z-10">
+              <motion.div initial={{ scale: 0 }} animate={{ scale: drawn ? 1 : 0 }} transition={{ type: "spring", delay: 0.2 }}
+                className="w-4 h-4 rounded-full border-[2.5px] bg-slate-950" style={{ borderColor: "#3b82f6" }} />
+            </div>
+            {/* L1→2 */}
+            <motion.div className="flex-[1.5] h-[3px] rounded-full" style={{ background: "#3b82f6" }}
+              initial={{ scaleX: 0, transformOrigin: "left" }} animate={{ scaleX: drawn ? 1 : 0 }} transition={{ duration: 0.4, delay: 0.32 }} />
+            {/* S2 — CI gate */}
+            <div className="flex-1 flex flex-col items-center justify-center z-10">
+              <AnimatePresence>
+                {ciVisible && (
+                  <motion.div key="code-ci" initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0, opacity: 0 }} transition={{ type: "spring", stiffness: 280, damping: 18 }}
+                    className="flex flex-col items-center gap-1.5"
+                  >
+                    <div className="w-11 h-11 sm:w-13 sm:h-13 rounded-full border-2 border-blue-500 bg-blue-500/20 flex items-center justify-center shadow-lg shadow-blue-500/30">
+                      <Check className="w-4 h-4 sm:w-5 sm:h-5 text-blue-300" />
+                    </div>
+                    <div className="text-[9px] font-semibold text-blue-400 text-center leading-tight">ESLint<br/>pytest</div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+            {/* L2→3 */}
+            <motion.div className="flex-[1.5] h-[3px] rounded-full" style={{ background: "#3b82f6" }}
+              initial={{ scaleX: 0, transformOrigin: "left" }} animate={{ scaleX: drawn ? 1 : 0 }} transition={{ duration: 0.35, delay: 0.48 }} />
+            {/* S3 */}
+            <div className="flex-1 flex justify-center z-10">
+              <motion.div initial={{ scale: 0 }} animate={{ scale: drawn ? 1 : 0 }} transition={{ type: "spring", delay: 0.55 }}
+                className="w-4 h-4 rounded-full border-[2.5px] bg-slate-950" style={{ borderColor: "#3b82f6" }} />
+            </div>
+            {/* L3→4 */}
+            <motion.div className="flex-[1.5] h-[3px] rounded-full" style={{ background: "#3b82f6" }}
+              initial={{ scaleX: 0, transformOrigin: "left" }} animate={{ scaleX: drawn ? 1 : 0 }} transition={{ duration: 0.3, delay: 0.62 }} />
+            {/* S4 */}
+            <div className="flex-1 flex justify-center z-10">
+              <motion.div initial={{ scale: 0 }} animate={{ scale: drawn ? 1 : 0 }} transition={{ type: "spring", delay: 0.68 }}
+                className="w-4 h-4 rounded-full border-[2.5px] bg-slate-950" style={{ borderColor: "#3b82f6" }} />
+            </div>
+            {/* L4→5 */}
+            <motion.div className="flex-[1.5] h-[3px] rounded-full" style={{ background: "#3b82f6" }}
+              initial={{ scaleX: 0, transformOrigin: "left" }} animate={{ scaleX: drawn ? 1 : 0 }} transition={{ duration: 0.3, delay: 0.75 }} />
+            {/* S5 */}
+            <div className="flex-1 flex justify-center z-10">
+              <motion.div initial={{ scale: 0 }} animate={{ scale: drawn ? 1 : 0 }} transition={{ type: "spring", delay: 0.82 }}
+                className="w-4 h-4 rounded-full border-[2.5px] bg-slate-950" style={{ borderColor: "#3b82f6" }} />
+            </div>
+          </div>
+
+          {/* ═══════════════════════════════════
+              INFRASTRUCTURE LINE (green)
+          ═══════════════════════════════════ */}
+          <div className="flex items-center mb-10">
+            <div className="w-16 sm:w-20 shrink-0 flex justify-end pr-4">
+              <span className="text-green-400 text-[10px] font-black uppercase tracking-widest">Infra</span>
+            </div>
+            <div className="flex-1 flex justify-center z-10">
+              <motion.div initial={{ scale: 0 }} animate={{ scale: drawn ? 1 : 0 }} transition={{ type: "spring", delay: 0.04 }}
+                className="w-4 h-4 rounded-full border-[2.5px] bg-slate-950" style={{ borderColor: "#22c55e" }} />
+            </div>
+            <motion.div className="flex-[1.5] h-[3px] rounded-full" style={{ background: "#22c55e" }}
+              initial={{ scaleX: 0, transformOrigin: "left" }} animate={{ scaleX: drawn ? 1 : 0 }} transition={{ duration: 0.4, delay: 0.16 }} />
+            <div className="flex-1 flex justify-center z-10">
+              <motion.div initial={{ scale: 0 }} animate={{ scale: drawn ? 1 : 0 }} transition={{ type: "spring", delay: 0.24 }}
+                className="w-4 h-4 rounded-full border-[2.5px] bg-slate-950" style={{ borderColor: "#22c55e" }} />
+            </div>
+            <motion.div className="flex-[1.5] h-[3px] rounded-full" style={{ background: "#22c55e" }}
+              initial={{ scaleX: 0, transformOrigin: "left" }} animate={{ scaleX: drawn ? 1 : 0 }} transition={{ duration: 0.4, delay: 0.36 }} />
+            {/* S2 — CI gate */}
+            <div className="flex-1 flex flex-col items-center justify-center z-10">
+              <AnimatePresence>
+                {ciVisible && (
+                  <motion.div key="infra-ci" initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0, opacity: 0 }} transition={{ type: "spring", stiffness: 280, damping: 18, delay: 0.12 }}
+                    className="flex flex-col items-center gap-1.5"
+                  >
+                    <div className="w-11 h-11 sm:w-13 sm:h-13 rounded-full border-2 border-green-500 bg-green-500/20 flex items-center justify-center shadow-lg shadow-green-500/30">
+                      <Check className="w-4 h-4 sm:w-5 sm:h-5 text-green-300" />
+                    </div>
+                    <div className="text-[9px] font-semibold text-green-400 text-center leading-tight">Snyk<br/>Terraform</div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+            <motion.div className="flex-[1.5] h-[3px] rounded-full" style={{ background: "#22c55e" }}
+              initial={{ scaleX: 0, transformOrigin: "left" }} animate={{ scaleX: drawn ? 1 : 0 }} transition={{ duration: 0.35, delay: 0.52 }} />
+            <div className="flex-1 flex justify-center z-10">
+              <motion.div initial={{ scale: 0 }} animate={{ scale: drawn ? 1 : 0 }} transition={{ type: "spring", delay: 0.58 }}
+                className="w-4 h-4 rounded-full border-[2.5px] bg-slate-950" style={{ borderColor: "#22c55e" }} />
+            </div>
+            <motion.div className="flex-[1.5] h-[3px] rounded-full" style={{ background: "#22c55e" }}
+              initial={{ scaleX: 0, transformOrigin: "left" }} animate={{ scaleX: drawn ? 1 : 0 }} transition={{ duration: 0.3, delay: 0.65 }} />
+            <div className="flex-1 flex justify-center z-10">
+              <motion.div initial={{ scale: 0 }} animate={{ scale: drawn ? 1 : 0 }} transition={{ type: "spring", delay: 0.72 }}
+                className="w-4 h-4 rounded-full border-[2.5px] bg-slate-950" style={{ borderColor: "#22c55e" }} />
+            </div>
+            <motion.div className="flex-[1.5] h-[3px] rounded-full" style={{ background: "#22c55e" }}
+              initial={{ scaleX: 0, transformOrigin: "left" }} animate={{ scaleX: drawn ? 1 : 0 }} transition={{ duration: 0.3, delay: 0.78 }} />
+            <div className="flex-1 flex justify-center z-10">
+              <motion.div initial={{ scale: 0 }} animate={{ scale: drawn ? 1 : 0 }} transition={{ type: "spring", delay: 0.85 }}
+                className="w-4 h-4 rounded-full border-[2.5px] bg-slate-950" style={{ borderColor: "#22c55e" }} />
+            </div>
+          </div>
+
+          {/* ═══════════════════════════════════
+              DOCUMENTATION LINE (amber) — THE KEY LINE
+          ═══════════════════════════════════ */}
+          <div className="flex items-center">
+            <div className="w-16 sm:w-20 shrink-0 flex justify-end pr-4">
+              <span className="text-amber-400 text-[10px] font-black uppercase tracking-widest">Docs</span>
+            </div>
+            {/* S0 */}
+            <div className="flex-1 flex justify-center z-10">
+              <motion.div initial={{ scale: 0 }} animate={{ scale: drawn ? 1 : 0 }} transition={{ type: "spring", delay: 0.08 }}
+                className="w-4 h-4 rounded-full border-[2.5px] bg-slate-950" style={{ borderColor: "#f59e0b" }} />
+            </div>
+            {/* L0→1 solid */}
+            <motion.div className="flex-[1.5] h-[3px] rounded-full" style={{ background: "#f59e0b" }}
+              initial={{ scaleX: 0, transformOrigin: "left" }} animate={{ scaleX: drawn ? 1 : 0 }} transition={{ duration: 0.4, delay: 0.2 }} />
+            {/* S1 */}
+            <div className="flex-1 flex justify-center z-10">
+              <motion.div initial={{ scale: 0 }} animate={{ scale: drawn ? 1 : 0 }} transition={{ type: "spring", delay: 0.28 }}
+                className="w-4 h-4 rounded-full border-[2.5px] bg-slate-950" style={{ borderColor: "#f59e0b" }} />
+            </div>
+            {/* L1→2 — GAP segment (dashed before IM, solid after) */}
+            <div className="flex-[1.5] flex items-center">
+              <AnimatePresence mode="wait">
+                {imVisible ? (
+                  <motion.div key="solid-l12" className="w-full h-[3px] rounded-l-full" style={{ background: "#f59e0b" }}
+                    initial={{ scaleX: 0, transformOrigin: "left" }} animate={{ scaleX: 1 }} transition={{ duration: 0.3 }} />
+                ) : (
+                  <motion.div key="dashed-l12" className="w-full" initial={{ opacity: 0 }} animate={{ opacity: drawn ? 1 : 0 }}>
+                    <div className="w-full border-t-2 border-dashed" style={{ borderColor: "rgba(245,158,11,0.3)" }} />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* S2 — THE GAP → IM STATION */}
+            <div className="flex-1 flex flex-col items-center justify-center z-10 relative">
+              <AnimatePresence mode="wait">
+                {/* Phase 1: faint placeholder dot */}
+                {drawn && !gapShown && !imVisible && (
+                  <motion.div key="placeholder" initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 0.25 }} exit={{ scale: 0, opacity: 0 }}
+                    className="w-4 h-4 rounded-full border-[2.5px] border-dashed border-amber-600/40" />
+                )}
+                {/* Phase 3: gap warning */}
+                {gapShown && !imVisible && (
+                  <motion.div key="gap-warning" initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0, opacity: 0 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 18 }}
+                    className="flex flex-col items-center gap-1.5"
+                  >
+                    <div className="relative">
+                      <motion.div
+                        className="absolute inset-0 rounded-full pointer-events-none"
+                        animate={{ opacity: [0.4, 0.9, 0.4], scale: [1, 1.6, 1] }}
+                        transition={{ duration: 1.8, repeat: Infinity }}
+                        style={{ background: "radial-gradient(circle, rgba(239,68,68,0.4), transparent 70%)" }}
+                      />
+                      <div className="w-11 h-11 sm:w-13 sm:h-13 rounded-full border-2 border-dashed border-red-500/70 bg-red-950/30 flex items-center justify-center relative z-10">
+                        <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-red-400" />
+                      </div>
+                    </div>
+                    <div className="text-[9px] font-bold text-red-400 text-center leading-tight">No<br/>check</div>
+                  </motion.div>
+                )}
+                {/* Phase 4+: IM station */}
+                {imVisible && (
+                  <motion.div key="im-station" initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+                    transition={{ type: "spring", stiffness: 260, damping: 14 }}
+                    className="flex flex-col items-center gap-1.5"
+                  >
+                    <div className="relative">
+                      {!imFinal && (
+                        <motion.div
+                          className="absolute inset-0 rounded-full pointer-events-none"
+                          animate={{ opacity: [0.5, 1, 0.5], scale: [1, 1.75, 1] }}
+                          transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
+                          style={{ background: "radial-gradient(circle, rgba(245,158,11,0.5), transparent 70%)" }}
+                        />
+                      )}
+                      {imFinal && (
+                        <motion.div
+                          className="absolute inset-0 rounded-full pointer-events-none"
+                          initial={{ opacity: 0, scale: 2 }}
+                          animate={{ opacity: [0.8, 0] }}
+                          transition={{ duration: 0.6 }}
+                          style={{ background: "radial-gradient(circle, rgba(34,197,94,0.5), transparent 70%)" }}
+                        />
+                      )}
+                      <motion.div
+                        animate={{
+                          borderColor: imFinal ? "#22c55e" : "#f59e0b",
+                          background: imFinal ? "rgba(34,197,94,0.2)" : "rgba(245,158,11,0.18)",
+                        }}
+                        transition={{ duration: 0.6 }}
+                        className="w-11 h-11 sm:w-13 sm:h-13 rounded-full border-2 flex items-center justify-center relative z-10"
+                        style={{ boxShadow: imFinal ? "0 0 24px 4px rgba(34,197,94,0.3)" : "0 0 28px 6px rgba(245,158,11,0.35)" }}
+                      >
+                        {imFinal
+                          ? <Check className="w-4 h-4 sm:w-5 sm:h-5 text-green-300" />
+                          : <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-amber-300" />
+                        }
+                      </motion.div>
+                    </div>
+                    <motion.div
+                      animate={{ color: imFinal ? "#86efac" : "#fcd34d" }}
+                      transition={{ duration: 0.6 }}
+                      className="text-[9px] font-black text-center leading-tight"
+                    >
+                      Invisible<br />Mentors
+                    </motion.div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* L2→3 — GAP segment (dashed before IM, solid after) */}
+            <div className="flex-[1.5] flex items-center">
+              <AnimatePresence mode="wait">
+                {imVisible ? (
+                  <motion.div key="solid-l23" className="w-full h-[3px] rounded-r-full" style={{ background: "#f59e0b" }}
+                    initial={{ scaleX: 0, transformOrigin: "left" }} animate={{ scaleX: 1 }} transition={{ duration: 0.3, delay: 0.12 }} />
+                ) : (
+                  <motion.div key="dashed-l23" className="w-full" initial={{ opacity: 0 }} animate={{ opacity: drawn ? 1 : 0 }}>
+                    <div className="w-full border-t-2 border-dashed" style={{ borderColor: "rgba(245,158,11,0.3)" }} />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* S3 */}
+            <div className="flex-1 flex justify-center z-10">
+              <motion.div initial={{ scale: 0 }} animate={{ scale: drawn ? 1 : 0 }} transition={{ type: "spring", delay: 0.55 }}
+                className="w-4 h-4 rounded-full border-[2.5px] bg-slate-950" style={{ borderColor: "#f59e0b" }} />
+            </div>
+            <motion.div className="flex-[1.5] h-[3px] rounded-full" style={{ background: "#f59e0b" }}
+              initial={{ scaleX: 0, transformOrigin: "left" }} animate={{ scaleX: drawn ? 1 : 0 }} transition={{ duration: 0.3, delay: 0.62 }} />
+            {/* S4 */}
+            <div className="flex-1 flex justify-center z-10">
+              <motion.div initial={{ scale: 0 }} animate={{ scale: drawn ? 1 : 0 }} transition={{ type: "spring", delay: 0.7 }}
+                className="w-4 h-4 rounded-full border-[2.5px] bg-slate-950" style={{ borderColor: "#f59e0b" }} />
+            </div>
+            <motion.div className="flex-[1.5] h-[3px] rounded-full" style={{ background: "#f59e0b" }}
+              initial={{ scaleX: 0, transformOrigin: "left" }} animate={{ scaleX: drawn ? 1 : 0 }} transition={{ duration: 0.3, delay: 0.77 }} />
+            {/* S5 */}
+            <div className="flex-1 flex justify-center z-10">
+              <motion.div initial={{ scale: 0 }} animate={{ scale: drawn ? 1 : 0 }} transition={{ type: "spring", delay: 0.84 }}
+                className="w-4 h-4 rounded-full border-[2.5px] bg-slate-950" style={{ borderColor: "#f59e0b" }} />
+            </div>
+          </div>
+
+          {/* ── Callout strip ── */}
+          <div className="mt-12 min-h-[56px] flex items-center justify-center">
+            <AnimatePresence mode="wait">
+              {gapShown && !imVisible && (
+                <motion.div key="gap-callout"
+                  initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.4 }}
+                  className="flex items-center gap-3 px-5 py-3 rounded-xl border border-red-500/25 bg-red-950/20 text-sm"
+                >
+                  <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
+                  <span className="text-red-300">
+                    Documentation had no automated gate. Jargon merged every time. No one noticed.
+                  </span>
+                </motion.div>
+              )}
+              {imFinal && (
+                <motion.div key="success-callout"
+                  initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4 }}
+                  className="flex items-center gap-3 px-5 py-3 rounded-xl border border-green-500/25 bg-green-950/20 text-sm"
+                >
+                  <Check className="w-4 h-4 text-green-400 shrink-0" />
+                  <span className="text-green-300">
+                    All three tracks now enforce quality automatically. The gap is closed.
+                  </span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </motion.div>
+
+        {/* Narrative bridge */}
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={inView ? { opacity: 1 } : {}}
+          transition={{ delay: 0.8 }}
+          className="text-center text-slate-600 text-sm mt-8 max-w-lg mx-auto leading-relaxed"
+        >
+          The gap was never a missing tool. It was a missing policy.
+          <span className="text-slate-500"> The next section explains why framing it that way changes everything.</span>
+        </motion.p>
+      </div>
+    </section>
+  );
+}
+
+// ─────────────────────────────────────────────
 // POLICY AS CODE + ADVANCED PRACTICES SECTION
 // ─────────────────────────────────────────────
 function PolicyAsCode() {
@@ -4966,6 +5381,7 @@ export default function App() {
       <Problem />
       <Impact />
       <AnalogySplash />
+      <SubwayMap />
       <PolicyAsCode />
       <HowItWorks />
       <SpeedTheater />
