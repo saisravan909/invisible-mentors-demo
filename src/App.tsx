@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence, useInView } from "framer-motion";
 import confetti from "canvas-confetti";
 import { QRCodeSVG } from "qrcode.react";
@@ -2483,103 +2483,379 @@ function ROICalculator() {
 }
 
 // ─────────────────────────────────────────────
-// WHY NOT JUST USE X? COMPARISON TABLE
+// WHY NOT JUST USE X? — PREMIUM VISUAL SECTION
 // ─────────────────────────────────────────────
 function WhyUs() {
   const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "-80px" });
+  const inView = useInView(ref, { once: true, margin: "-60px" });
 
-  const rows = [
-    { feature: "Runs automatically in GitHub CI", im: true, grammarly: false, vale: "partial", manual: false, copilot: false },
-    { feature: "AI-generated plain-English rewrite (not just a flag)", im: true, grammarly: false, vale: false, manual: "partial", copilot: "partial" },
-    { feature: "Comment posted directly on the PR", im: true, grammarly: false, vale: false, manual: true, copilot: false },
-    { feature: "No new tool for contributors to learn", im: true, grammarly: false, vale: false, manual: true, copilot: false },
-    { feature: "100% free & open source", im: true, grammarly: false, vale: true, manual: true, copilot: false },
-    { feature: "Works for any language / any team size", im: true, grammarly: "partial", vale: true, manual: false, copilot: "partial" },
-    { feature: "Catches domain-specific jargon (custom rules)", im: true, grammarly: false, vale: true, manual: true, copilot: false },
-    { feature: "Scales to 1000 PRs/day with zero extra cost", im: true, grammarly: false, vale: true, manual: false, copilot: false },
+  // Five unique differentiators — the exact combo nobody else has
+  const pillars = [
+    {
+      icon: Github,
+      title: "GitHub-Native",
+      body: "Feedback lands exactly where contributors already work — on the pull request itself. No new tab, no new account, no new workflow.",
+      color: "#e2e8f0",
+      accent: "#3b82f6",
+      border: "rgba(59,130,246,0.2)",
+    },
+    {
+      icon: Wand2,
+      title: "A Fix, Not Just a Flag",
+      body: "Every other linter tells you something is wrong. This one tells you what to write instead. The AI reads the surrounding context and returns a specific, usable rewrite.",
+      color: "#c4b5fd",
+      accent: "#a855f7",
+      border: "rgba(168,85,247,0.2)",
+    },
+    {
+      icon: Zap,
+      title: "Completely Automatic",
+      body: "No human has to remember to run it. No maintainer has to schedule a review. The pipeline fires the instant a PR is opened and posts the result in under 30 seconds.",
+      color: "#93c5fd",
+      accent: "#3b82f6",
+      border: "rgba(59,130,246,0.2)",
+    },
+    {
+      icon: Code2,
+      title: "Zero New Infrastructure",
+      body: "One YAML file added to the repo. That is the entire installation. No server to provision, no dashboard to configure, no SaaS account to create.",
+      color: "#6ee7b7",
+      accent: "#10b981",
+      border: "rgba(16,185,129,0.2)",
+    },
+    {
+      icon: Infinity,
+      title: "Open Source, No Lock-In",
+      body: "Every component is free and replaceable. Swap Vale for a different linter. Swap Gemini for a local model. The architecture is yours.",
+      color: "#fcd34d",
+      accent: "#f59e0b",
+      border: "rgba(245,158,11,0.2)",
+    },
   ];
 
-  const columns = [
-    { key: "im", label: "Invisible\nMentors", highlight: true, color: "#3b82f6" },
-    { key: "grammarly", label: "Grammarly", color: "#64748b" },
-    { key: "vale", label: "Vale alone", color: "#64748b" },
-    { key: "manual", label: "Manual\nReview", color: "#64748b" },
-    { key: "copilot", label: "GitHub\nCopilot", color: "#64748b" },
+  // Pipeline stage coverage — how far each tool gets
+  const STAGES = ["Flag jargon", "Write the fix", "Post to PR", "Run automatically", "Free forever"];
+  const tools = [
+    {
+      name: "Invisible Mentors",
+      stages: 5,
+      color: "#3b82f6",
+      glow: "rgba(59,130,246,0.3)",
+      what: "Flags + AI rewrite + PR comment + CI automation + open source",
+      highlight: true,
+    },
+    {
+      name: "Grammarly",
+      stages: 0,
+      color: "#64748b",
+      glow: "transparent",
+      what: "Grammar and spelling only — not GitHub-aware, not jargon-aware",
+      highlight: false,
+    },
+    {
+      name: "Vale alone",
+      stages: 1,
+      color: "#64748b",
+      glow: "transparent",
+      what: "Flags the problem but generates no fix and posts no comment",
+      highlight: false,
+    },
+    {
+      name: "GitHub Copilot",
+      stages: 0,
+      color: "#64748b",
+      glow: "transparent",
+      what: "Code completion — not a documentation quality pipeline",
+      highlight: false,
+    },
+    {
+      name: "Manual Review",
+      stages: 2,
+      color: "#64748b",
+      glow: "transparent",
+      what: "Humans do it all — slow, expensive, and impossible to scale",
+      highlight: false,
+    },
+  ];
+
+  // Full feature matrix
+  const rows = [
+    { feature: "Runs on every PR automatically", im: true, grammarly: false, vale: true, manual: false, copilot: false },
+    { feature: "Generates a specific plain-English rewrite", im: true, grammarly: false, vale: false, manual: true, copilot: false },
+    { feature: "Posts feedback directly on the pull request", im: true, grammarly: false, vale: false, manual: true, copilot: false },
+    { feature: "Catches project-specific jargon (custom rules)", im: true, grammarly: false, vale: true, manual: true, copilot: false },
+    { feature: "No account or tool setup for contributors", im: true, grammarly: false, vale: false, manual: true, copilot: false },
+    { feature: "100% free and open source", im: true, grammarly: false, vale: true, manual: true, copilot: false },
+    { feature: "Scales to thousands of PRs at zero added cost", im: true, grammarly: false, vale: true, manual: false, copilot: false },
+    { feature: "Works for any human language, not just English", im: true, grammarly: "partial", vale: true, manual: true, copilot: "partial" },
+  ];
+  const cols = [
+    { key: "im",        label: "Invisible Mentors", highlight: true,  color: "#3b82f6" },
+    { key: "grammarly", label: "Grammarly",          highlight: false, color: "#475569" },
+    { key: "vale",      label: "Vale alone",         highlight: false, color: "#475569" },
+    { key: "manual",    label: "Manual Review",      highlight: false, color: "#475569" },
+    { key: "copilot",   label: "Copilot",            highlight: false, color: "#475569" },
   ];
 
   const Cell = ({ v }: { v: boolean | string }) => {
-    if (v === true) return <Check className="w-4 h-4 text-green-400 mx-auto" />;
-    if (v === false) return <X className="w-4 h-4 text-slate-700 mx-auto" />;
-    return <span className="text-amber-400 text-xs font-bold">Partial</span>;
+    if (v === true)  return <Check className="w-4 h-4 text-green-400 mx-auto" />;
+    if (v === false) return <X className="w-3.5 h-3.5 text-slate-700 mx-auto" />;
+    return <span className="text-[10px] text-amber-400 font-bold uppercase tracking-wide mx-auto block text-center">Partial</span>;
   };
 
   return (
-    <section ref={ref} className="py-20 relative" id="comparison">
-      <div className="max-w-5xl mx-auto px-6">
+    <section ref={ref} className="py-24 relative overflow-hidden" id="comparison">
+      {/* Background grid */}
+      <div className="absolute inset-0 grid-bg opacity-20 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-blue-950/5 to-transparent pointer-events-none" />
+
+      <div className="max-w-6xl mx-auto px-6 relative">
+
+        {/* ── Section header ── */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 24 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
-          className="text-center mb-12"
+          className="text-center mb-20"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-sm font-medium mb-5">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-sm font-semibold mb-6 tracking-wide uppercase">
             <BarChart3 className="w-3.5 h-3.5" />
-            For Technical Audiences
+            Why Nothing Else Does This
           </div>
-          <h2 className="text-4xl sm:text-5xl font-black text-slate-100 mb-4">
-            "Why Not Just Use
-            <span className="gradient-text"> Grammarly?"</span>
+          <h2 className="text-5xl sm:text-6xl font-black text-slate-100 mb-5 leading-none tracking-tight">
+            Every tool solves <span className="gradient-text">one part.</span>
+            <br />This solves all five.
           </h2>
-          <p className="text-slate-400 max-w-2xl mx-auto">
-            Fair question. Here's how Invisible Mentors compares to every alternative
-            you might already be thinking of.
+          <p className="text-slate-400 text-lg max-w-2xl mx-auto leading-relaxed">
+            Grammarly catches typos. Vale flags jargon. Copilot writes code.
+            None of them post a fix to your pull request at the moment it happens, for free, automatically.
           </p>
         </motion.div>
 
+        {/* ── PIPELINE COVERAGE DIAGRAM ── */}
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 32 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ delay: 0.1 }}
-          className="rounded-2xl overflow-hidden border border-slate-700/30"
+          className="mb-20"
         >
-          {/* Header */}
-          <div className="grid bg-slate-900/80 border-b border-slate-700/30"
-            style={{ gridTemplateColumns: "1fr repeat(5, minmax(80px, 120px))" }}>
-            <div className="p-4 text-slate-500 text-xs font-semibold uppercase tracking-wider">Feature</div>
-            {columns.map((c) => (
-              <div key={c.key} className={`p-3 text-center border-l border-slate-700/20 ${c.highlight ? "bg-blue-500/8" : ""}`}>
-                <span className="text-xs font-bold whitespace-pre-line leading-tight"
-                  style={{ color: c.highlight ? c.color : "#64748b" }}>{c.label}</span>
-                {c.highlight && <div className="w-1 h-1 rounded-full bg-blue-400 mx-auto mt-1" />}
-              </div>
-            ))}
-          </div>
-
-          {/* Rows */}
-          {rows.map((row, i) => (
-            <motion.div
-              key={row.feature}
-              initial={{ opacity: 0, x: -10 }}
-              animate={inView ? { opacity: 1, x: 0 } : {}}
-              transition={{ delay: 0.05 + i * 0.05 }}
-              className={`grid border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors ${i % 2 === 0 ? "bg-slate-900/20" : ""}`}
-              style={{ gridTemplateColumns: "1fr repeat(5, minmax(80px, 120px))" }}
-            >
-              <div className="p-4 text-slate-400 text-sm flex items-center">{row.feature}</div>
-              {columns.map((c) => (
-                <div key={c.key} className={`p-4 flex items-center justify-center border-l border-slate-800/40 ${c.highlight ? "bg-blue-500/5" : ""}`}>
-                  <Cell v={row[c.key as keyof typeof row] as boolean | string} />
+          <div className="card-glass rounded-2xl border border-slate-700/30 overflow-hidden">
+            {/* Stage headers */}
+            <div className="grid border-b border-slate-700/30 bg-slate-950/60"
+              style={{ gridTemplateColumns: "180px repeat(5, 1fr)" }}>
+              <div className="p-4 text-xs text-slate-600 font-semibold uppercase tracking-wider">Tool</div>
+              {STAGES.map((s, i) => (
+                <div key={s} className="p-3 text-center border-l border-slate-800/50">
+                  <div className="w-6 h-6 rounded-full bg-slate-800 border border-slate-700/50 flex items-center justify-center text-[10px] font-black text-slate-400 mx-auto mb-1.5">{i + 1}</div>
+                  <p className="text-[11px] text-slate-500 font-semibold leading-tight">{s}</p>
                 </div>
               ))}
-            </motion.div>
-          ))}
+            </div>
 
-          {/* Footer note */}
-          <div className="p-4 bg-slate-900/60 text-center">
-            <p className="text-xs text-slate-600">
-              Invisible Mentors is the only tool that combines custom jargon rules, AI rewrites, and automatic GitHub PR comments — for free.
-            </p>
+            {/* Tool rows */}
+            {tools.map((tool, ti) => (
+              <motion.div
+                key={tool.name}
+                initial={{ opacity: 0, x: -16 }}
+                animate={inView ? { opacity: 1, x: 0 } : {}}
+                transition={{ delay: 0.15 + ti * 0.07 }}
+                className={`grid border-b border-slate-800/30 last:border-0 ${tool.highlight ? "bg-blue-500/5" : ""}`}
+                style={{ gridTemplateColumns: "180px repeat(5, 1fr)" }}
+              >
+                <div className="p-4 flex items-center gap-2.5">
+                  {tool.highlight && (
+                    <div className="w-1.5 h-6 rounded-full" style={{ background: tool.color }} />
+                  )}
+                  <span className={`text-sm font-bold ${tool.highlight ? "text-blue-300" : "text-slate-500"}`}>
+                    {tool.name}
+                  </span>
+                </div>
+                {STAGES.map((_, si) => {
+                  const covered = si < tool.stages;
+                  const edge = si === tool.stages - 1 && !tool.highlight;
+                  return (
+                    <div key={si} className="p-4 flex items-center justify-center border-l border-slate-800/30 relative">
+                      {covered ? (
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={inView ? { scale: 1 } : {}}
+                          transition={{ delay: 0.2 + ti * 0.07 + si * 0.05, type: "spring", stiffness: 300 }}
+                          className="w-6 h-6 rounded-full flex items-center justify-center"
+                          style={{
+                            background: tool.highlight ? `${tool.color}25` : "rgba(100,116,139,0.12)",
+                            border: `1.5px solid ${tool.highlight ? tool.color : "rgba(100,116,139,0.3)"}`,
+                            boxShadow: tool.highlight ? `0 0 8px ${tool.color}40` : "none",
+                          }}
+                        >
+                          <Check className="w-3 h-3" style={{ color: tool.highlight ? tool.color : "#64748b" }} />
+                        </motion.div>
+                      ) : (
+                        <div className="w-6 h-6 rounded-full flex items-center justify-center bg-slate-900/50 border border-slate-800/50">
+                          <X className="w-2.5 h-2.5 text-slate-800" />
+                        </div>
+                      )}
+                      {edge && (
+                        <div className="absolute -right-0 top-1/2 -translate-y-1/2 z-10">
+                          <div className="text-[9px] text-red-400/70 font-bold uppercase tracking-widest rotate-90 translate-x-2 whitespace-nowrap">stops here</div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </motion.div>
+            ))}
+
+            {/* What each tool does */}
+            <div className="border-t border-slate-800/50 bg-slate-950/40 p-4">
+              <div className="grid gap-2" style={{ gridTemplateColumns: "180px 1fr" }}>
+                {tools.map((tool) => (
+                  <React.Fragment key={tool.name}>
+                    <span className={`text-xs font-semibold ${tool.highlight ? "text-blue-400" : "text-slate-600"}`}>{tool.name}</span>
+                    <span className="text-xs text-slate-600">{tool.what}</span>
+                  </React.Fragment>
+                ))}
+              </div>
+            </div>
           </div>
+        </motion.div>
+
+        {/* ── FIVE PILLARS ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          transition={{ delay: 0.2 }}
+          className="mb-20"
+        >
+          <div className="text-center mb-10">
+            <h3 className="text-2xl font-black text-slate-100 mb-2">The Combination Nobody Has Built Before</h3>
+            <p className="text-slate-500 text-sm max-w-xl mx-auto">Each of these five properties exists somewhere. No single tool has all five.</p>
+          </div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            {pillars.map((p, i) => (
+              <motion.div
+                key={p.title}
+                initial={{ opacity: 0, y: 32 }}
+                animate={inView ? { opacity: 1, y: 0 } : {}}
+                transition={{ delay: 0.25 + i * 0.08 }}
+                whileHover={{ y: -4, transition: { duration: 0.2 } }}
+                className="card-glass rounded-2xl p-5 flex flex-col gap-3 cursor-default"
+                style={{ border: `1px solid ${p.border}` }}
+              >
+                {/* Number badge */}
+                <div className="flex items-center justify-between">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center"
+                    style={{ background: `${p.accent}15`, border: `1px solid ${p.border}` }}>
+                    <p.icon className="w-4 h-4" style={{ color: p.accent }} />
+                  </div>
+                  <span className="text-[10px] font-black text-slate-700 font-mono">0{i + 1}</span>
+                </div>
+                <div>
+                  <h4 className="text-slate-100 font-bold text-sm mb-1.5" style={{ color: p.color }}>{p.title}</h4>
+                  <p className="text-slate-500 text-xs leading-relaxed">{p.body}</p>
+                </div>
+                {/* Accent line */}
+                <div className="h-px mt-auto rounded-full" style={{ background: `linear-gradient(to right, ${p.accent}60, transparent)` }} />
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* ── FULL FEATURE MATRIX ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          transition={{ delay: 0.3 }}
+        >
+          <div className="text-center mb-8">
+            <h3 className="text-2xl font-black text-slate-100 mb-2">Full Feature Breakdown</h3>
+            <p className="text-slate-500 text-sm">Every capability, every alternative, side by side.</p>
+          </div>
+
+          <div className="rounded-2xl overflow-hidden border border-slate-700/30">
+            {/* Header */}
+            <div className="grid bg-slate-950/80 border-b border-slate-700/30"
+              style={{ gridTemplateColumns: "1fr repeat(5, minmax(88px, 1fr))" }}>
+              <div className="p-4 text-xs text-slate-600 font-semibold uppercase tracking-wider">Capability</div>
+              {cols.map((c) => (
+                <div key={c.key}
+                  className={`px-3 py-4 text-center border-l border-slate-800/50 ${c.highlight ? "bg-blue-500/8" : ""}`}>
+                  <span className="text-xs font-bold leading-tight block" style={{ color: c.highlight ? "#60a5fa" : "#475569" }}>
+                    {c.label}
+                  </span>
+                  {c.highlight && (
+                    <motion.div
+                      className="w-4 h-0.5 rounded-full mx-auto mt-1.5"
+                      style={{ background: "#3b82f6" }}
+                      animate={{ scaleX: [0.5, 1, 0.5] }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {rows.map((row, i) => (
+              <motion.div
+                key={row.feature}
+                initial={{ opacity: 0 }}
+                animate={inView ? { opacity: 1 } : {}}
+                transition={{ delay: 0.35 + i * 0.04 }}
+                className={`grid border-b border-slate-900/70 last:border-0 hover:bg-slate-800/15 transition-colors ${i % 2 === 0 ? "bg-slate-900/10" : ""}`}
+                style={{ gridTemplateColumns: "1fr repeat(5, minmax(88px, 1fr))" }}
+              >
+                <div className="p-4 text-slate-400 text-sm flex items-center leading-snug">{row.feature}</div>
+                {cols.map((c) => (
+                  <div key={c.key}
+                    className={`p-4 flex items-center justify-center border-l border-slate-900/60 ${c.highlight ? "bg-blue-500/4" : ""}`}>
+                    <Cell v={row[c.key as keyof typeof row] as boolean | string} />
+                  </div>
+                ))}
+              </motion.div>
+            ))}
+
+            {/* Summary bar */}
+            <div className="border-t border-slate-700/20 bg-slate-950/60 px-4 py-5">
+              <div className="grid items-center" style={{ gridTemplateColumns: "1fr repeat(5, minmax(88px, 1fr))" }}>
+                <span className="text-xs text-slate-600 uppercase tracking-wider font-semibold">Score</span>
+                {cols.map((c, ci) => {
+                  const yes = rows.filter(r => r[c.key as keyof typeof r] === true).length;
+                  const pct = Math.round((yes / rows.length) * 100);
+                  return (
+                    <div key={c.key} className={`flex flex-col items-center gap-1 border-l border-slate-800/30 px-2 ${c.highlight ? "bg-blue-500/5" : ""}`}>
+                      <span className="text-sm font-black" style={{ color: c.highlight ? "#3b82f6" : "#475569" }}>{pct}%</span>
+                      <div className="w-full h-1 rounded-full bg-slate-800">
+                        <motion.div
+                          className="h-full rounded-full"
+                          initial={{ width: 0 }}
+                          animate={inView ? { width: `${pct}%` } : {}}
+                          transition={{ delay: 0.5 + ci * 0.05, duration: 0.8, ease: "easeOut" }}
+                          style={{ background: c.highlight ? "#3b82f6" : "#334155" }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Closing statement */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={inView ? { opacity: 1, y: 0 } : {}}
+            transition={{ delay: 0.5 }}
+            className="mt-8 card-glass rounded-2xl border border-blue-500/15 p-6 text-center"
+          >
+            <p className="text-slate-300 text-base leading-relaxed max-w-3xl mx-auto">
+              The combination of{" "}
+              <span className="text-blue-300 font-semibold">open source</span>,{" "}
+              <span className="text-purple-300 font-semibold">GitHub-native delivery</span>,{" "}
+              <span className="text-teal-300 font-semibold">AI-generated rewrites</span>,{" "}
+              <span className="text-green-300 font-semibold">zero new infrastructure</span>, and{" "}
+              <span className="text-amber-300 font-semibold">full automation</span>{" "}
+              does not exist in any other tool. That is not a positioning claim — it is a feature checklist.
+            </p>
+          </motion.div>
         </motion.div>
       </div>
     </section>
